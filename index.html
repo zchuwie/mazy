@@ -1,14 +1,80 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mazy</title>
+
     <link rel="stylesheet" href="./src/css/index.css">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
 </head>
+
 <body>
-    <button id="startBtn">Start Game</button>
-    
+
+    <!-- ================= TITLE SCREEN ================= -->
+    <div class="title-screen">
+        <h1 class="game-title">MAZY TANK</h1>
+
+        <p class="title-subtitle">
+            Navigate the maze <br />
+            and <br />
+            Destroy the enemy!
+        </p>
+
+        <div class="menu">
+            <button onclick="hideDiv()" class="start-btn">Start Game</button>
+        </div>
+
+        <p class="footer">© 2026 Mazy Tank</p>
+    </div>
+
+    <!-- MENU OPTION SCREEN -->
+    <div class="menu-screen" style="display: none;">
+        <h1 class="game-title">SELECT OPTIONS</h1>
+
+        <div class="menu-section">
+            <p class="option-subtitle">Choose Difficulty</p>
+            <div class="button-group">
+                <button class="menu-btn">Easy</button>
+                <button class="menu-btn">Medium</button>
+                <button class="menu-btn">Hard</button>
+            </div>
+        </div>
+
+        <div class="menu-section">
+            <p class="option-subtitle">Choose Time</p>
+            <div class="button-group">
+                <button class="menu-btn">3 Minutes</button>
+                <button class="menu-btn">5 Minutes</button>
+                <button class="menu-btn">7 Minutes</button>
+            </div>
+        </div>
+
+        <hr>
+
+        <button id="playButton" class="play-button">PLAY</button>
+    </div>
+
     <script src="./src/index.js"></script>
+
+    <script>
+        function hideDiv() {
+            // Get the screens
+            const titleScreen = document.querySelector('.title-screen');
+            const menuScreen = document.querySelector('.menu-screen');
+
+            // Hide title screen
+            titleScreen.style.display = 'none';
+
+            // Show menu screen
+            menuScreen.style.display = 'flex';
+        }
+
+    </script>
 </body>
+
 </html>

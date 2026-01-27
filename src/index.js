@@ -1,4 +1,4 @@
-const startBtn = document.getElementById('startBtn');
+const startBtn = document.getElementById('playButton');
 
 startBtn.addEventListener('click', () => {
     window.location.href = 'arena.html';

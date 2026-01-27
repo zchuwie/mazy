@@ -45,7 +45,7 @@ const sketch = (p) => {
     bullets.friction = 0;
     bullets.drag = 0;
 
-    new p.Tiles(mazeLayout[0], 0, healthbarHeight + 70, 36, 40);
+    new p.Tiles(mazeLayout[4], 0, healthbarHeight + 70, 36, 40);
 
     // --- Player Setup ---
     player = new p.Sprite(480, 400, 35, 35);
