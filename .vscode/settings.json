@@ -1,0 +1,10 @@
+{
+    // Enable JavaScript validation
+    "javascript.validate.enable": true,
+    // Enable TypeScript validation
+    "typescript.validate.enable": true,
+    // Enable ESLint if you use it
+    "eslint.enable": true,
+    // Show problems as you type
+    "problems.showCurrentInStatus": true
+}

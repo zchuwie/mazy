@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script src="https://cdn.jsdelivr.net/npm/p5@1.11.4/lib/p5.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/p5@1.11.4/lib/addons/p5.sound.min.js"></script>
+    <script src="https://p5play.org/v3/planck.min.js"></script>
+    <script src="https://p5play.org/v3/p5play.js"></script>
+    <title>Mazy Arena</title>
+    <style>
+      * {
+        margin: 0 auto;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      
+      #main-box {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 700px;
+        width: 960px;
+        margin: 25px auto;
+        background-color: #fff;
+        box-shadow:
+          0 8px 32px 0 rgba(0, 0, 0, 0.25),
+          0 1.5px 6px 0 rgba(0, 0, 0, 0.15);
+          border-radius: 2px;
+        }
+        </style>
+  </head>
+  <body>
+    <main id="main-box"></main>
+    <script type="module" src="./src/main.js"></script>
+  </body>
+</html>
