@@ -1,17 +1,211 @@
+/* ================= RESET ================= */
 * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
+    font-family: 'Press Start 2P', monospace;
 }
 
+/* ================= BODY / BACKGROUND ================= */
 body {
     height: 100vh;
     width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #e5e7eb;
+    background: radial-gradient(circle at center, #7dbcf6, #0a04b1);
+    position: relative;
+    overflow: hidden;
 }
 
-#startBtn {
+/* ================= LINES BACKGROUND ================= */
+body::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    /* allow clicks to pass through */
+    background:
+        repeating-linear-gradient(0deg,
+            /* horizontal lines */
+            rgba(255, 255, 255, 0.15),
+            /* line color (very subtle) */
+            rgba(255, 255, 255, 0.15) 2px,
+            /* line thickness */
+            transparent 2px,
+            transparent 100px
+            /* spacing between lines */
+        ),
+        repeating-linear-gradient(90deg,
+            /* vertical lines */
+            rgba(255, 255, 255, 0.2),
+            rgba(255, 255, 255, 0.2) 2px,
+            transparent 2px,
+            transparent 100px);
+    z-index: 0;
+    /* behind content */
+}
+
+/* ================= TITLE SCREEN ================= */
+.title-screen {
+    position: relative;
+    /* keep it above lines */
+    z-index: 1;
+    text-align: center;
+    padding: 48px 64px;
+    border-radius: 16px;
+    background: rgba(100, 147, 255, 0.9);
+    box-shadow: 0 0 40px rgba(0, 0, 0, 0.7);
+    display: flex;
+    flex-direction: column;
+    gap: 40px;
+    min-width: 420px;
+}
+
+/* ================= START BUTTON ================= */
+
+.start-btn {
+    width: 300px;
+    padding: 25px 0;
+    font-size: 1rem;
+    color: #020617;
+    background: #59d4fa;
+    border: 3px solid #201453;
+    cursor: pointer;
+    box-shadow: 4px 4px 0 #142853;
+    transition: all 0.15s ease;
+}
+
+
+.start-btn:hover {
+    background: #1645a3;
+    color: white;
+}
+
+.start-btn:active {
+    transform: translate(3px, 3px);
+    box-shadow: 1px 1px 0 #14532d;
+}
+
+
+/* ================= MENU SCREEN ================= */
+.menu-screen {
+    position: relative;
+    z-index: 1;
+    text-align: center;
+    padding: 48px 64px;
+    border-radius: 16px;
+    background: rgba(100, 147, 255, 0.9);
+    box-shadow: 0 0 40px rgba(0, 0, 0, 0.7);
+    display: flex;
+    flex-direction: column;
+    gap: 40px;
+    min-width: 420px;
+}
+
+/* ================= GAME TITLE ================= */
+.game-title {
+    font-size: 2.5rem;
+    color: #004ff8;
+    letter-spacing: 6px;
+    text-shadow:
+        3px 3px 0 #380092,
+        0 0 20px rgb(168, 245, 255);
+}
+
+/* ================= TITLE SUBTITLE ================= */
+.title-subtitle {
+    font-size: 0.9rem;
+    line-height: 1.8;
+    color: #001763;
+    opacity: 0.9;
+}
+
+/* ================= MENU SECTIONS ================= */
+.menu-section {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.option-subtitle {
+    font-size: 0.9rem;
+    color: #001763;
+}
+
+/* ================= BUTTON GROUP ================= */
+.button-group {
     display: flex;
     justify-content: center;
-    align-items: center;
-    background-color: #f0f0f0;
+    gap: 16px;
+    width: 100%;
+}
+
+/* ================= OPTION BUTTONS ================= */
+.menu-btn {
+    width: 200px;
+    padding: 18px 0;
+    font-size: 0.75rem;
+    color: #020617;
+    background: #59d4fa;
+    border: 3px solid #201453;
+    cursor: pointer;
+    box-shadow: 4px 4px 0 #142853;
+    transition: all 0.15s ease;
+}
+
+.menu-btn:hover {
+    background: #1645a3;
+    color: white;
+}
+
+.menu-btn:active {
+    transform: translate(3px, 3px);
+    box-shadow: 1px 1px 0 #14532d;
+}
+
+/* ================= DIVIDER ================= */
+hr {
+    border: none;
+    height: 3px;
+    background: #171453;
+    opacity: 0.6;
+}
+
+/* ================= PLAY BUTTON ================= */
+.play-button {
+    width: 100%;
+    max-width: 360px;
+    margin: 0 auto;
+    padding: 18px 0;
+    font-size: 0.8rem;
+    color: #020617;
+    background: #59d4fa;
+    border: 3px solid #201453;
+    cursor: pointer;
+    box-shadow: 4px 4px 0 #142853;
+    transition: all 0.15s ease;
+}
+
+.play-button:hover {
+    background: #1645a3;
+    color: white;
+}
+
+.play-button:active {
+    transform: translate(3px, 3px);
+    box-shadow: 1px 1px 0 #14532d;
+}
+
+/* ================= FOOTER ================= */
+.footer {
+    margin-top: 12px;
+    font-size: 0.55rem;
+    opacity: 0.6;
+    color: #001763;
+    text-align: center;
 }
