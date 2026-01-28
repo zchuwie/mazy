@@ -1,0 +1,82 @@
+export class Orb {
+    constructor(p, x, y, type) {
+        this.p = p;
+        this.sprite = new p.Sprite(x, y);
+        this.sprite.diameter = 30;
+        this.sprite.collider = 'none';
+        this.type = type;
+        this.active = true;
+        this.respawnTime = 10000;
+        this.lastPickupTime = 0;
+        this.setOrbColor();
+    }
+
+    setOrbColor() {
+        switch(this.type) {
+            case 'speed':
+                this.sprite.color = 'pink';
+                break;
+            case 'damage':
+                this.sprite.color = 'red';
+                break;
+            case 'health':
+                this.sprite.color = 'green';
+                break;
+            case 'rapid':
+                this.sprite.color = 'yellow';
+                break;
+            case 'slow':
+                this.sprite.color = 'purple';
+                break;
+            default:
+                this.sprite.color = 'white';
+        }
+    }
+
+    checkPickup(player) {
+        if (!this.active) return null;
+        
+        if (this.sprite.overlaps(player.sprite)) {
+            console.log(`Orb picked up! Type: ${this.type}`);
+            this.active = false;
+            this.sprite.visible = false;
+            this.lastPickupTime = this.p.millis();
+            return this.type;
+        }
+        return null;
+    }
+
+    update() {
+        if (!this.active && this.p.millis() - this.lastPickupTime >= this.respawnTime) {
+            console.log(`Orb respawned! Type: ${this.type}`);
+            this.active = true;
+            this.sprite.visible = true;
+        }
+    }
+
+    applyEffect(player) {
+        const duration = 5000;
+        console.log(`Applying effect: ${this.type} to player`);
+        
+        switch(this.type) {
+            case 'speed':
+                player.applySpeedBoost(1.5, duration);
+                break;
+            case 'damage':
+                player.applyDamageBoost(1.5, duration);
+                break;
+            case 'health':
+                player.heal(30);
+                break;
+            case 'rapid':
+                player.applyRapidFire(0.5, duration);
+                break;
+            case 'slow':
+                player.applySpeedBoost(0.5, duration);
+                break;
+            case 'weak':
+                player.applyDamageBoost(0.5, duration);
+                break;
+        }
+    }
+}
