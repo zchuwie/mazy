@@ -1,23 +1,29 @@
 import { mazeLayout } from "./maze.js";
-import { tankImages } from "./interface.js";
 import { Tank } from "./components/tank.js";
+import { BotTank } from "./components/bot.js";
 import { Orb } from "./components/orb.js";
+import { tankImages } from "./interface.js";
 import { HealthBar } from "./components/healthbar.js";
-import { calculateDamage, spawnRandomOrb } from "./helper.js";
+import {
+  calculateDamage,
+  spawnRandomOrb,
+  validHallwayPosition,
+  preloadImages,
+} from "./helper.js";
 
 const sketch = (p) => {
-  let player1, player2, bullet;
+  let player1, bullet, bot1;
   let hWalls, vWalls, borderWalls;
   let orbs = [];
   let orbTypes = ["speed", "damage", "health", "rapid", "slow"];
-  let hallwayPositions = [];
+  let hallwayPositions;
 
   const width = 960;
   const height = 700;
   const healthbarHeight = 75;
 
   p.preload = () => {
-    p.loadImage(tankImages.greenTank);
+    preloadImages(p);
   };
 
   p.setup = () => {
@@ -27,18 +33,7 @@ const sketch = (p) => {
       tileH = 40,
       offsetY = healthbarHeight + 70;
 
-    hallwayPositions = [];
-    let layout = mazeLayout[0];
-    for (let row = 0; row < layout.length; row++) {
-      for (let col = 0; col < layout[row].length; col++) {
-        let c = layout[row][col];
-        if (c === "." || c === " ") {
-          let x = col * tileW + tileW / 2;
-          let y = row * tileH + tileH / 2 + offsetY;
-          hallwayPositions.push({ x, y });
-        }
-      }
-    }
+    hallwayPositions = validHallwayPosition(mazeLayout, tileW, tileH, offsetY);
 
     for (let i = 0; i < 5; i++) {
       spawnRandomOrb(hallwayPositions, orbTypes, orbs, p, Orb);
@@ -68,7 +63,7 @@ const sketch = (p) => {
     new borderWalls.Sprite(width, height / 2, 10, height);
 
     bullet = new p.Group();
-    new p.Tiles(mazeLayout[0], 0, healthbarHeight + 70, 36, 40);
+    new p.Tiles(mazeLayout[4], 0, healthbarHeight + 70, 36, 40);
 
     player1 = new Tank(
       p,
@@ -84,19 +79,16 @@ const sketch = (p) => {
       bullet,
     );
 
-    player2 = new Tank(
+    bot1 = new BotTank(
       p,
-      width / 2 + 100,
-      height / 2,
+      width / 2 + 150,
+      height / 2 + 150,
       tankImages.greenTank,
-      {
-        forward: "arrowup",
-        backward: "arrowdown",
-        left: "arrowleft",
-        right: "arrowright",
-      },
       bullet,
+      "normal",
     );
+
+
   };
 
   p.draw = () => {
@@ -109,34 +101,40 @@ const sketch = (p) => {
 
     const players = [
       { health: player1.health, name: "Player 1" },
-      { health: player2.health, name: "Player 2" },
+      { health: bot1.health, name: "Player 2" },
     ];
 
     HealthBar(p, players, width);
 
     player1.update();
-    player2.update();
+    bot1.update();
 
-    orbs.forEach((orb, idx) => {
+    const orbsToRemove = new Set();
+
+    orbs.forEach((orb) => {
       orb.update();
+
+      let pickedUp = false;
       let pickup1 = orb.checkPickup(player1);
       if (pickup1) {
         orb.applyEffect(player1);
-        setTimeout(
-          () => {
-            orbs.splice(idx, 1);
-            spawnRandomOrb(hallwayPositions, orbTypes, orbs, p, Orb);
-          },
-          2000 + Math.random() * 4000,
-        );
+        pickedUp = true;
       }
-      let pickup2 = orb.checkPickup(player2);
+
+      let pickup2 = orb.checkPickup(bot1);
       if (pickup2) {
-        orb.applyEffect(player2);
-        setTimeout(
-          () => {
-            orbs.splice(idx, 1);
-            spawnRandomOrb(hallwayPositions, orbTypes, orbs, p, Orb);
+        orb.applyEffect(bot1);
+        pickedUp = true;
+      }
+
+      if (pickedUp && !orbsToRemove.has(orb)) {
+        orbsToRemove.add(orb);
+        setTimeout(() => {
+            const idx = orbs.indexOf(orb);
+            if (idx !== -1) {
+              orbs.splice(idx, 1);
+              spawnRandomOrb(hallwayPositions, orbTypes, orbs, p, Orb);
+            }
           },
           2000 + Math.random() * 4000,
         );
@@ -149,17 +147,17 @@ const sketch = (p) => {
       if (b.overlaps(player1.sprite)) {
         player1.playerHit(b, calcDamage);
       }
-      if (b.overlaps(player2.sprite)) {
-        player2.playerHit(b, calcDamage);
+      if (b.overlaps(bot1.sprite)) {
+        bot1.playerHit(b, calcDamage);
       }
     });
 
-    if (p.kb.presses("space")) {
+    if (p.kb.presses("q")) {
       player1.shoot();
     }
 
-    if (p.kb.presses("enter")) {
-      player2.shoot();
+    if (p.kb.presses("m")) {
+      bot1.shoot();
     }
   };
 };
