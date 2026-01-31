@@ -8,73 +8,121 @@
 
     <link rel="stylesheet" href="./src/css/index.css">
 
+    <script src="https://cdn.jsdelivr.net/npm/p5@1.11.4/lib/p5.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/p5@1.11.4/lib/addons/p5.sound.min.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
 </head>
 
-<body>
 
+<body>
     <!-- ================= TITLE SCREEN ================= -->
     <div class="title-screen">
         <h1 class="game-title">MAZY TANK</h1>
 
-        <p class="title-subtitle">
-            Navigate the maze <br />
-            and <br />
-            Destroy the enemy!
-        </p>
-
         <div class="menu">
-            <button onclick="hideDiv()" class="start-btn">Start Game</button>
+            <div class="start-buttons">
+                <button id="startButton" class="start-btn">Start Game</button>
+                <button id="tutorialButton" class="start-btn"> Tutorial </button>
+                <button id="optionsButton" class="start-btn"> Option </button>
+                <button id="creditsButton" class="start-btn"> Credits </button>
+            </div>
         </div>
 
         <p class="footer">© 2026 Mazy Tank</p>
     </div>
 
-    <!-- MENU OPTION SCREEN -->
-    <div class="menu-screen" style="display: none;">
-        <h1 class="game-title">SELECT OPTIONS</h1>
+    <!-- ================= MODE SELECTION SCREEN ================= -->
+    <div id="mode-selection-screen" class="mode-selection" style="display:none;">
+        <h1 class="game-title">SELECT MODE</h1>
 
-        <div class="menu-section">
-            <p class="option-subtitle">Choose Difficulty</p>
-            <div class="button-group">
-                <button class="menu-btn">Easy</button>
-                <button class="menu-btn">Medium</button>
-                <button class="menu-btn">Hard</button>
+        <div class="mode-grid">
+            <div class="mode-card active" data-mode="bot">
+                <h2>V.S. BOT</h2>
+                <p>Fight against AI tanks</p>
+            </div>
+
+            <div class="mode-card" data-mode="coop">
+                <h2>CO-OP</h2>
+                <p>Team up against enemies</p>
+            </div>
+
+            <div class="mode-card" data-mode="pvp">
+                <h2>PVP</h2>
+                <p>Player vs Player battle</p>
             </div>
         </div>
 
-        <div class="menu-section">
-            <p class="option-subtitle">Choose Time</p>
-            <div class="button-group">
-                <button class="menu-btn">3 Minutes</button>
-                <button class="menu-btn">5 Minutes</button>
-                <button class="menu-btn">7 Minutes</button>
-            </div>
+        <div class="play-bar">
+            <button id="confirmModeButton" class="play-button">
+                CONFIRM
+            </button>
         </div>
-
-        <hr>
-
-        <button id="playButton" class="play-button">PLAY</button>
     </div>
+
+    <!-- ================= CHARACTER SELECTION SCREEN ================= -->
+    <div id="character-selection" style="display: none;">
+        <h1 class="title-character">CHARACTER SELECTION</h1>
+
+        <div class="character-row">
+            <!-- Player 1 -->
+            <div class="character-slot" id="player1">
+                <p>
+                    Player 1 
+                </p>
+                <div class="character-box" data-player="1">
+                    <div class="lock-overlay"></div>
+                    <div class="char-display" id="p1Char"></div> <!-- container for image + name -->
+                </div>
+            </div>
+
+            <!-- Player 2 -->
+            <div class="character-slot" id="player2">
+                <p>
+                    Player 2
+                </p>
+                <div class="character-box" data-player="2">
+                    <div class="lock-overlay"></div>
+                    <div class="char-display" id="p2Char"></div> <!-- container for image + name -->
+                </div>
+            </div>
+        </div>
+
+        <div class="start-bar">
+            <button id="mapSelectButton" class="play-button"> SELECT MAP </button>
+        </div>
+    </div>
+
+    <!-- ================= MAP SELECTION SCREEN ================= -->
+    <div class="map-selection" style="display: none;">
+        <h1>MAP SELECTION</h1>
+
+        <!-- Big preview -->
+        <div class="map-preview">
+            <div class="map-preview-box" id="mapPreview"></div>
+            <p id="mapName">MAP 1</p>
+        </div>
+
+        <!-- Small map grid -->
+        <div class="map-grid">
+            <div class="map-thumb active" data-map="MAP 1"></div>
+            <div class="map-thumb" data-map="MAP 2"></div>
+            <div class="map-thumb" data-map="MAP 3"></div>
+            <div class="map-thumb" data-map="MAP 4"></div>
+            <div class="map-thumb" data-map="MAP 5"></div>
+            <div class="map-thumb" data-map="MAP 6"></div>
+            <div class="map-thumb" data-map="MAP 7"></div>
+            <div class="map-thumb" data-map="MAP 8"></div>
+        </div>
+
+        <button class="play-button" id="playButton">PLAY</button>
+    </div>
+
 
     <script src="./src/index.js"></script>
 
-    <script>
-        function hideDiv() {
-            // Get the screens
-            const titleScreen = document.querySelector('.title-screen');
-            const menuScreen = document.querySelector('.menu-screen');
 
-            // Hide title screen
-            titleScreen.style.display = 'none';
-
-            // Show menu screen
-            menuScreen.style.display = 'flex';
-        }
-
-    </script>
 </body>
 
 </html>
