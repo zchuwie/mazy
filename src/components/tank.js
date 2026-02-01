@@ -151,4 +151,10 @@ export class Tank {
     this.health -= damage;
     if (this.health < 0) this.health = 0;
   }
+
+  isPlayerDead() {
+    return this.health <= 0;
+  }
+
+  
 }
