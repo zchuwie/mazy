@@ -63,7 +63,7 @@ const sketch = (p) => {
     new borderWalls.Sprite(width, height / 2, 10, height);
 
     bullet = new p.Group();
-    new p.Tiles(mazeLayout[4], 0, healthbarHeight + 70, 36, 40);
+    new p.Tiles(mazeLayout[3], 0, healthbarHeight + 70, 36, 40);
 
     player1 = new Tank(
       p,
