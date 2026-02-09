@@ -3,9 +3,16 @@ export class Tank {
     this.p = p;
     this.sprite = new p.Sprite(x, y);
     this.sprite.diameter = 45;
-    this.sprite.image = image;
-    this.sprite.image.scale = 0.1;
-    this.sprite.image.offset.y = -10;
+    
+    // Only set image if it exists to prevent crashes
+    if (image) {
+      this.sprite.image = image;
+      if (this.sprite.image && this.sprite.image.width && this.sprite.image.height) {
+        this.sprite.image.scale = 0.1;
+        this.sprite.image.offset.y = -10;
+      }
+    }
+    
     this.sprite.rotation = 0;
     this.sprite.rotationLock = true;
     this.sprite.friction = 0;
@@ -27,12 +34,16 @@ export class Tank {
     this.activeEffects = [];
 
     this.bullet = bullet;
-    this.bullet.diameter = 8;
-    this.bullet.color = "black";
-    this.bullet.life = 120;
-    this.bullet.bounciness = 1;
-    this.bullet.friction = 0;
-    this.bullet.drag = 0;
+    
+    // Only initialize bullet group properties once
+    if (bullet && !bullet._initialized) {
+      bullet.diameter = 12;
+      bullet.color = "black";
+      bullet.life = 120;
+      bullet.bounciness = 1;
+      bullet.friction = 0;
+      bullet.drag = 0;
+    }
   }
 
   update() {

@@ -1,94 +1,73 @@
-import { mazeLayout } from "./maze.js";
-import { Tank } from "./components/tank.js";
-import { BotTank } from "./components/bot.js";
-import { Orb } from "./components/orb.js";
-import { tankImages } from "./interface.js";
+
 import { HealthBar } from "./components/healthbar.js";
 import {
-  calculateDamage,
-  spawnRandomOrb,
-  validHallwayPosition,
   preloadImages,
+  wallsColliderSetup,
+  calculateDamage,
 } from "./helper.js";
+import {
+  HEIGHT,
+  WIDTH,
+  HEALTHBARHEIGHT,
+} from "./interface.js";
+import { renderArenaConfig, getConfig, determineMapSelection } from "./config.js";
+import { renderOrbSpawn } from "./mechanics.js";
 
 const sketch = (p) => {
-  let player1, bullet, bot1;
   let hWalls, vWalls, borderWalls;
-  let orbs = [];
-  let orbTypes = ["speed", "damage", "health", "rapid", "slow"];
-  let hallwayPositions;
-
-  const width = 960;
-  const height = 700;
-  const healthbarHeight = 75;
-
+  let gameState = {
+      players: [],
+      bot: null,
+      orbs: [],
+      bullet: null,
+      gameMode: null,
+    };
   p.preload = () => {
     preloadImages(p);
   };
 
   p.setup = () => {
-    new p.Canvas(width, height);
+    new p.Canvas(WIDTH, HEIGHT);
+    
+    gameState.bullet = new p.Group();
+    const config = getConfig();
+    const modeString = config?.mode || 'bot'; // 'bot', 'coop', 'pvp'
+    
+    // Convert string mode to numeric
+    let mode = 1; 
+    if (modeString === 'bot') mode = 2;
+    else if (modeString === 'coop') mode = 3;
+    else if (modeString === 'pvp') mode = 1;
+    
+    gameState.gameMode = mode;
+    
+    const wallsData = wallsColliderSetup(p, hWalls, vWalls, borderWalls);
+    hWalls = wallsData.hWalls;
+    vWalls = wallsData.vWalls;
+    borderWalls = wallsData.borderWalls;
 
-    const tileW = 36,
-      tileH = 40,
-      offsetY = healthbarHeight + 70;
+    const { renderArena, mapSelected, modeSelected } = renderArenaConfig(p, config, determineMapSelection(config?.map), mode, gameState.bullet);
 
-    hallwayPositions = validHallwayPosition(mazeLayout, tileW, tileH, offsetY);
+    const selectedMap = mapSelected();
+    const players = modeSelected(mode);
 
-    for (let i = 0; i < 5; i++) {
-      spawnRandomOrb(hallwayPositions, orbTypes, orbs, p, Orb);
+    renderArena();
+    gameState.orbs = renderOrbSpawn(p, selectedMap);
+
+    // Initialize players based on game mode
+    if (mode === 1) {
+      // PvP: player1 vs player2
+      gameState.players = [players.player1, players.player2];
+      gameState.bot = null;
+    } else if (mode === 2) {
+      // VsBot: player vs bot
+      gameState.players = [players.player];
+      gameState.bot = players.bot;
+    } else if (mode === 3) {
+      // Coop: player1 and player2 vs bot
+      gameState.players = [players.player1, players.player2];
+      gameState.bot = players.bot;
     }
-
-    hWalls = new p.Group();
-    hWalls.w = 80;
-    hWalls.h = 8;
-    hWalls.tile = "-";
-    hWalls.collider = "static";
-    hWalls.color = "black";
-
-    vWalls = new p.Group();
-    vWalls.w = 8;
-    vWalls.h = 80;
-    vWalls.tile = "/";
-    vWalls.collider = "static";
-    vWalls.color = "black";
-
-    borderWalls = new p.Group();
-    borderWalls.collider = "static";
-    borderWalls.color = "black";
-
-    new borderWalls.Sprite(width / 2, healthbarHeight, width, 5);
-    new borderWalls.Sprite(width / 2, height, width, 10);
-    new borderWalls.Sprite(0, height / 2, 10, height);
-    new borderWalls.Sprite(width, height / 2, 10, height);
-
-    bullet = new p.Group();
-    new p.Tiles(mazeLayout[3], 0, healthbarHeight + 70, 36, 40);
-
-    player1 = new Tank(
-      p,
-      width / 2,
-      height / 2,
-      tankImages.greenTank,
-      {
-        forward: "w",
-        backward: "s",
-        left: "a",
-        right: "d",
-      },
-      bullet,
-    );
-
-    bot1 = new BotTank(
-      p,
-      width / 2 + 150,
-      height / 2 + 150,
-      tankImages.greenTank,
-      bullet,
-      "normal",
-    );
-
-
   };
 
   p.draw = () => {
@@ -96,70 +75,110 @@ const sketch = (p) => {
 
     p.fill(100);
     p.noStroke();
-    p.rect(0, 0, width, healthbarHeight);
+    p.rect(0, 0, WIDTH, HEALTHBARHEIGHT);
     p.fill(255);
 
-    const players = [
-      { health: player1.health, name: "Player 1" },
-      { health: bot1.health, name: "Player 2" },
-    ];
+    // Update all players
+    for (let player of gameState.players) {
+      player.update();
+    }
 
-    HealthBar(p, players, width);
+    // Update bot if exists
+    if (gameState.bot) {
+      gameState.bot.update();
+    }
 
-    player1.update();
-    bot1.update();
-
-    const orbsToRemove = new Set();
-
-    orbs.forEach((orb) => {
-      orb.update();
+    // Handle orb pickups
+    for (let i = gameState.orbs.length - 1; i >= 0; i--) {
+      const orb = gameState.orbs[i];
 
       let pickedUp = false;
-      let pickup1 = orb.checkPickup(player1);
-      if (pickup1) {
-        orb.applyEffect(player1);
-        pickedUp = true;
+      
+      // Check pickup by all players
+      for (let player of gameState.players) {
+        const pickup = orb.checkPickup(player);
+        if (pickup) {
+          orb.applyEffect(player);
+          pickedUp = true;
+          break;
+        }
       }
 
-      let pickup2 = orb.checkPickup(bot1);
-      if (pickup2) {
-        orb.applyEffect(bot1);
-        pickedUp = true;
+      // Check pickup by bot if exists
+      if (!pickedUp && gameState.bot) {
+        const pickup = orb.checkPickup(gameState.bot);
+        if (pickup) {
+          orb.applyEffect(gameState.bot);
+          pickedUp = true;
+        }
       }
 
-      if (pickedUp && !orbsToRemove.has(orb)) {
-        orbsToRemove.add(orb);
-        setTimeout(() => {
-            const idx = orbs.indexOf(orb);
-            if (idx !== -1) {
-              orbs.splice(idx, 1);
-              spawnRandomOrb(hallwayPositions, orbTypes, orbs, p, Orb);
-            }
-          },
-          2000 + Math.random() * 4000,
-        );
+      if (pickedUp) {
+        orb.remove();
+        gameState.orbs.splice(i, 1);
       }
-    });
+    }
 
-    bullet.forEach((b) => {
-      let calcDamage = calculateDamage(b);
+    // Handle bullet collisions and damage
+    for (let i = gameState.bullet.length - 1; i >= 0; i--) {
+      const bullet = gameState.bullet[i];
+      let hitTarget = false;
 
-      if (b.overlaps(player1.sprite)) {
-        player1.playerHit(b, calcDamage);
+      // Check collision with all players
+      for (let player of gameState.players) {
+        if (bullet.overlaps(player.sprite)) {
+          const calcDamage = calculateDamage(bullet);
+          player.playerHit(bullet, calcDamage);
+          hitTarget = true;
+          break;
+        }
       }
-      if (b.overlaps(bot1.sprite)) {
-        bot1.playerHit(b, calcDamage);
-      }
-    });
 
+      // Check collision with bot if exists
+      if (!hitTarget && gameState.bot) {
+        if (bullet.overlaps(gameState.bot.sprite)) {
+          const calcDamage = calculateDamage(bullet);
+          gameState.bot.playerHit(bullet, calcDamage);
+          hitTarget = true;
+        }
+      }
+
+      if (hitTarget && bullet.remove) {
+        bullet.remove();
+      }
+    }
+
+    // Handle shooting controls based on mode
     if (p.kb.presses("q")) {
-      player1.shoot();
+      gameState.players[0].shoot();
     }
 
-    if (p.kb.presses("m")) {
-      bot1.shoot();
+    if (gameState.gameMode === 1 && p.kb.presses("m")) {
+      gameState.players[1].shoot();
     }
-  };
+
+    if (gameState.gameMode === 3 && p.kb.presses("m")) {
+      gameState.players[1].shoot();
+    }
+
+    // Display health bars
+    const healthBarData = [];
+    for (let i = 0; i < gameState.players.length; i++) {
+      healthBarData.push({
+        health: gameState.players[i].health,
+        name: `Player ${i + 1}`
+      });
+    }
+
+    if (gameState.bot) {
+      healthBarData.push({
+        health: gameState.bot.health,
+        name: "Bot"
+      });
+    }
+
+    HealthBar(p, healthBarData, WIDTH, HEALTHBARHEIGHT);
+  }
 };
 
 // eslint-disable-next-line no-undef
