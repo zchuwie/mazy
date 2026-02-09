@@ -33,7 +33,11 @@ export function validHallwayPosition(mazeLayout, tileW, tileH, offsetY) {
             if (c === "." || c === " ") {
                 let x = col * tileW + tileW / 2;
                 let y = row * tileH + tileH / 2 + offsetY;
-                hallwayPositions.push({ x, y });
+                
+                // Only add positions within canvas bounds (with 20px margin for orb safety)
+                if (x >= 20 && x <= WIDTH - 20 && y >= offsetY + 20 && y <= HEIGHT - 20) {
+                    hallwayPositions.push({ x, y });
+                }
             }
         }
     }

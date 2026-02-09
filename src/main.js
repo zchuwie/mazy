@@ -1,14 +1,20 @@
 
+import { Orb } from "./components/orb.js";
 import { HealthBar } from "./components/healthbar.js";
 import {
   preloadImages,
   wallsColliderSetup,
   calculateDamage,
+  spawnRandomOrb,
+  validHallwayPosition,
 } from "./helper.js";
 import {
   HEIGHT,
   WIDTH,
   HEALTHBARHEIGHT,
+  TILEW,
+  TILEH,
+  OFFSETY,
 } from "./interface.js";
 import { renderArenaConfig, getConfig, determineMapSelection } from "./config.js";
 import { renderOrbSpawn } from "./mechanics.js";
@@ -21,6 +27,9 @@ const sketch = (p) => {
       orbs: [],
       bullet: null,
       gameMode: null,
+      hallwayPositions: [],
+      orbTypes: ["speed", "damage", "health", "rapid", "slow"],
+      pendingOrbSpawns: [], // Track orbs waiting to spawn
     };
   p.preload = () => {
     preloadImages(p);
@@ -53,6 +62,7 @@ const sketch = (p) => {
 
     renderArena();
     gameState.orbs = renderOrbSpawn(p, selectedMap);
+    gameState.hallwayPositions = validHallwayPosition(selectedMap, TILEW, TILEH, OFFSETY);
 
     // Initialize players based on game mode
     if (mode === 1) {
@@ -116,6 +126,21 @@ const sketch = (p) => {
       if (pickedUp) {
         orb.remove();
         gameState.orbs.splice(i, 1);
+        
+        // Schedule new orb spawn with random delay (1-5 seconds)
+        const randomDelay = p.random(1000, 5000);
+        gameState.pendingOrbSpawns.push({
+          spawnTime: p.millis() + randomDelay
+        });
+      }
+    }
+
+    // Handle pending orb spawns
+    for (let i = gameState.pendingOrbSpawns.length - 1; i >= 0; i--) {
+      const pending = gameState.pendingOrbSpawns[i];
+      if (p.millis() >= pending.spawnTime) {
+        spawnRandomOrb(gameState.hallwayPositions, gameState.orbTypes, gameState.orbs, p, Orb);
+        gameState.pendingOrbSpawns.splice(i, 1);
       }
     }
 
