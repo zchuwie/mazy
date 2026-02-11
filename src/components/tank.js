@@ -21,9 +21,9 @@ export class Tank {
     this.health = 100;
     this.shootCooldown = 500;
     this.controls = controls;
-    this.baseSpeed = 4;
-    this.moveSpeed = 4;
-    this.rotationSpeed = 3;
+    this.baseSpeed = 8;
+    this.moveSpeed = 6;
+    this.rotationSpeed = 5;
     this.lastShotTime = 0;
     this.currentRotation = -90;
 
@@ -37,7 +37,7 @@ export class Tank {
     
     // Only initialize bullet group properties once
     if (bullet && !bullet._initialized) {
-      bullet.diameter = 12;
+      bullet.diameter = 8;
       bullet.color = "black";
       bullet.life = 120;
       bullet.bounciness = 1;
@@ -132,7 +132,7 @@ export class Tank {
 
     let bullet = new this.bullet.Sprite(bulletX, bulletY);
     bullet.direction = this.sprite.rotation - 90;
-    bullet.speed = 5;
+    bullet.speed = 15;
 
     bullet._createdAt = this.p.millis();
     bullet._startX = bulletX;

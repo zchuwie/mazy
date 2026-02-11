@@ -102,6 +102,7 @@ const sketch = (p) => {
                 modeCards.forEach(c => c.classList.remove('active'));
                 card.classList.add('active');
 
+                // @ts-ignore
                 selectedMode = card.dataset.mode;
 
                 // auto player count based on mode
@@ -219,6 +220,7 @@ const sketch = (p) => {
         const mapScreen = document.querySelector('.map-selection');
 
         charScreen.style.display = 'none';
+        // @ts-ignore
         mapScreen.style.display = 'flex';
     }
 
@@ -226,6 +228,7 @@ const sketch = (p) => {
         const titleScreen = document.querySelector('.title-screen');
         const modeScreen = document.getElementById('mode-selection-screen');
 
+        // @ts-ignore
         titleScreen.style.display = 'none';
         modeScreen.style.display = 'flex';
     }
@@ -243,6 +246,7 @@ const sketch = (p) => {
             thumbs.forEach(t => t.classList.remove('active'));
             thumb.classList.add('active');
 
+            // @ts-ignore
             selectedMap = thumb.dataset.map;
             mapName.textContent = selectedMap;
         });
@@ -353,6 +357,7 @@ const sketch = (p) => {
 };
 
 // eslint-disable-next-line no-undef
+// @ts-ignore
 new p5(sketch);
 
 

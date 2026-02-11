@@ -7,10 +7,9 @@ import {
     OFFSETY
 } from "./interface.js";
 
-export const renderOrbSpawn = (p, map) => {
+export const renderOrbSpawn = (p, map, orbTypes) => {
     const hallwayPositions = validHallwayPosition(map, TILEW, TILEH, OFFSETY);
     let orbs = [];
-    const orbTypes = ["speed", "damage", "health", "rapid", "slow"];
 
     for (let i = 0; i < 5; i++) {
         spawnRandomOrb(hallwayPositions, orbTypes, orbs, p, Orb);

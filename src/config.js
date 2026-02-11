@@ -99,8 +99,7 @@ export const renderArenaConfig = (p, config, map, mode, bullet) => {
             HEIGHT / 2 + 150,
             player2Image,
             bullet,
-            "normal",
-            bullet,
+            "normal"         
         )
 
         return { player, bot };

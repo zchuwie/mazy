@@ -5,6 +5,14 @@ export const tankCharacters = [
     { name: 'Tank Delta', image: '../assets/characters/delta/Tank-Delta.png' }
 ];
 
+export const orbTypes = [
+    { name: 'speed', image: '../assets/orbs/speed.png' },
+    { name: 'damage', image: '../assets/orbs/damage.png' },
+    { name: 'health', image: '../assets/orbs/health.png' },
+    { name: 'rapid', image: '../assets/orbs/rapid-fire.png' },
+    { name: 'slow', image: '../assets/orbs/slowness.png' }
+]
+
 export const mazeLayout = [
     [
         "------.....................",
