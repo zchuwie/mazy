@@ -1,14 +1,24 @@
 export class Orb {
-    constructor(p, x, y, type) {
+    constructor(p, x, y, orbData) {
         this.p = p;
         this.sprite = new p.Sprite(x, y);
         this.sprite.diameter = 30;
         this.sprite.collider = 'none';
-        this.type = type;
+        this.orbData = orbData;
+        this.type = orbData.name;
         this.active = true;
         this.respawnTime = 10000;
         this.lastPickupTime = 0;
-        this.setOrbColor();
+        this.setOrbImage();
+    }
+
+    setOrbImage() {
+        if (this.orbData && this.orbData.image && this.orbData.image.width > 0) {
+            this.sprite.image = this.orbData.image;
+            this.sprite.image.scale = 0.09;
+        } else {
+            this.setOrbColor();
+        }
     }
 
     setOrbColor() {

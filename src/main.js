@@ -173,7 +173,7 @@ const sketch = (p) => {
     applySpawnPositions();
     if (gameState.bot) resetBotState(gameState.bot);
 
-    gameState.orbs = renderOrbSpawn(p, selectedMap, orbTypes.map(orb => orb.name));
+    gameState.orbs = renderOrbSpawn(p, selectedMap, orbTypes);
   }
 
   p.setup = () => {
@@ -200,7 +200,7 @@ const sketch = (p) => {
     const players = modeSelected(mode);
     currentMapIndex = Math.max(0, determineMapSelection(config?.map) - 1);
     const selectedMap = renderMap(currentMapIndex);
-    gameState.orbs = renderOrbSpawn(p, selectedMap, orbTypes.map(orb => orb.name));
+    gameState.orbs = renderOrbSpawn(p, selectedMap, orbTypes);
 
     // Initialize players based on game mode
     if (mode === 1) {
@@ -310,7 +310,7 @@ const sketch = (p) => {
     for (let i = gameState.pendingOrbSpawns.length - 1; i >= 0; i--) {
       const pending = gameState.pendingOrbSpawns[i];
       if (p.millis() >= pending.spawnTime) {
-        spawnRandomOrb(gameState.hallwayPositions, orbTypes.map(orb => orb.name), gameState.orbs, p, Orb);
+        spawnRandomOrb(gameState.hallwayPositions, orbTypes, gameState.orbs, p, Orb);
         gameState.pendingOrbSpawns.splice(i, 1);
       }
     }

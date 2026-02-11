@@ -1,4 +1,4 @@
-import { tankCharacters, HEIGHT, WIDTH, HEALTHBARHEIGHT } from "./interface.js";
+import { tankCharacters, orbTypes, HEIGHT, WIDTH, HEALTHBARHEIGHT } from "./interface.js";
 
 export function calculateDamage(b) {
     let maxDamage = 20;
@@ -20,8 +20,8 @@ export function spawnRandomOrb(hallwayPositions, orbTypes, orbs, p, Orb) {
     if (hallwayPositions.length === 0) return;
 
     let pos = hallwayPositions[Math.floor(Math.random() * hallwayPositions.length)];
-    let type = orbTypes[Math.floor(Math.random() * orbTypes.length)];
-    orbs.push(new Orb(p, pos.x, pos.y, type));
+    let orbData = orbTypes[Math.floor(Math.random() * orbTypes.length)];
+    orbs.push(new Orb(p, pos.x, pos.y, orbData));
 }
 
 export function validHallwayPosition(mazeLayout, tileW, tileH, offsetY) {
@@ -78,5 +78,12 @@ export function preloadImages(p) {
             ? tankCharacters[i].image 
             : tankCharacters[i].imagePath;
         tankCharacters[i].image = p.loadImage(imagePath);
+    }
+
+    for (let i = 0; i < orbTypes.length; i++) {
+        const imagePath = typeof orbTypes[i].image === 'string' 
+            ? orbTypes[i].image 
+            : orbTypes[i].imagePath;
+        orbTypes[i].image = p.loadImage(imagePath);
     }
 }
