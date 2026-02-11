@@ -1,10 +1,53 @@
+let countdownStartMs = null;
+let countdownSeconds = null;
+
+const getCountdownSeconds = () => {
+  if (countdownSeconds !== null) return countdownSeconds;
+
+  const storedTime = sessionStorage.getItem("time");
+  let parsed = Number.parseInt(storedTime, 10);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    const configRaw = sessionStorage.getItem("gameConfig");
+    if (configRaw) {
+      try {
+        const config = JSON.parse(configRaw);
+        parsed = Number.parseInt(config?.time, 10);
+      } catch {
+        parsed = 0;
+      }
+    }
+  }
+  countdownSeconds = Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+  return countdownSeconds;
+};
+
+const formatCountdown = (seconds) => {
+  const safeSeconds = Math.max(0, seconds);
+  const minutes = Math.floor(safeSeconds / 60);
+  const remaining = safeSeconds % 60;
+  const padded = ("0" + remaining).slice(-2);
+  return `${minutes}:${padded}`;
+};
+
 export const HealthBar = (p, players, width) => {
+  if (countdownStartMs === null) countdownStartMs = p.millis();
+  const initialSeconds = getCountdownSeconds();
+  const elapsedSeconds = Math.floor((p.millis() - countdownStartMs) / 1000);
+  const remainingSeconds = Math.max(0, initialSeconds - elapsedSeconds);
+
   const barW = 200;
   const barH = 20;
   const barY = 30;
   const spacing = 30;
   const n = players.length;
   if (n === 0) return;
+
+  p.push();
+  p.fill(0);
+  p.textSize(18);
+  p.textAlign(p.CENTER, p.CENTER);
+  p.text(`Time ${formatCountdown(remainingSeconds)}`, width / 2, barY - 10);
+  p.pop();
 
   for (let i = 0; i < n; i++) {
     let x;
