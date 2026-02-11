@@ -39,19 +39,13 @@ export class Orb {
         if (this.sprite.overlaps(player.sprite)) {
             console.log(`Orb picked up! Type: ${this.type}`);
             this.active = false;
-            this.sprite.visible = false;
-            this.lastPickupTime = this.p.millis();
             return this.type;
         }
         return null;
     }
 
-    update() {
-        if (!this.active && this.p.millis() - this.lastPickupTime >= this.respawnTime) {
-            console.log(`Orb respawned! Type: ${this.type}`);
-            this.active = true;
-            this.sprite.visible = true;
-        }
+    remove() {
+        this.sprite.remove();
     }
 
     applyEffect(player) {

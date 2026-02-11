@@ -37,22 +37,16 @@ export class BotTank extends Tank {
         switch(this.difficulty) {
             case 'easy':
                 this.thinkInterval = 400;
-                this.rotationSpeed = 2;
-                this.baseSpeed = 3;
                 this.aimAccuracy = 25;
                 this.shootingRange = 300;
                 break;
             case 'normal':
                 this.thinkInterval = 200;
-                this.rotationSpeed = 2.5;
-                this.baseSpeed = 4;
                 this.aimAccuracy = 15;
                 this.shootingRange = 400;
                 break;
             case 'hard':
                 this.thinkInterval = 100;
-                this.rotationSpeed = 3;
-                this.baseSpeed = 5;
                 this.aimAccuracy = 10;
                 this.shootingRange = 450;
                 break;
