@@ -47,15 +47,15 @@ export function validHallwayPosition(mazeLayout, tileW, tileH, offsetY) {
 
 export function wallsColliderSetup(p, hWalls, vWalls, borderWalls) {
     hWalls = new p.Group();
-    hWalls.w = 80;
-    hWalls.h = 8;
+    hWalls.w = 83;
+    hWalls.h = 12;
     hWalls.tile = "-";
     hWalls.collider = "static";
     hWalls.color = "black";
     
     vWalls = new p.Group();
-    vWalls.w = 8;
-    vWalls.h = 80;
+    vWalls.w = 12;
+    vWalls.h = 87;
     vWalls.tile = "/";
     vWalls.collider = "static";
     vWalls.color = "black";
