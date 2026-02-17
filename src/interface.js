@@ -1,16 +1,64 @@
 export const tankCharacters = [
-    { name: 'Tank Alpha', image: '../assets/characters/alpha/Tank-Alpha.png' },
-    { name: 'Tank Bravo', image: '../assets/characters/bravo/Tank-Bravo.png' },
-    { name: 'Tank Cobra', image: '../assets/characters/cobra/Tank-Cobra.png' },
-    { name: 'Tank Delta', image: '../assets/characters/delta/Tank-Delta.png' }
+    {
+        name: 'Tank Alpha',
+        image: '../assets/characters/alpha/Tank-Alpha.png',
+        baseSpeed: 9,
+        shootCooldown: 450,
+        baseDamage: 20,
+        bulletSpeed: 16,
+        bulletDiameter: 8,
+        bulletLife: 120,
+        bulletType: 'normal',
+        maxHealth: 100,
+        armor: 0.1
+    },
+    {
+        name: 'Tank Bravo',
+        image: '../assets/characters/bravo/Tank-Bravo.png',
+        baseSpeed: 5,
+        shootCooldown: 550,
+        baseDamage: 12,
+        bulletSpeed: 12,
+        bulletDiameter: 6,
+        bulletLife: 100,
+        bulletType: 'dual',
+        maxHealth: 140,
+        armor: 0.25
+    },
+    {
+        name: 'Tank Cobra',
+        image: '../assets/characters/cobra/Tank-Cobra.png',
+        baseSpeed: 12,
+        shootCooldown: 300,
+        baseDamage: 20,
+        bulletSpeed: 12,
+        bulletDiameter: 20,
+        bulletLife: 200,
+        bulletType: 'normal',
+        maxHealth: 70,
+        armor: 0
+    },
+    {
+        name: 'Tank Delta',
+        image: '../assets/characters/delta/Tank-Delta.png',
+        baseSpeed: 8,
+        shootCooldown: 200,
+        baseDamage: 18,
+        bulletSpeed: 14,
+        bulletDiameter: 7,
+        bulletLife: 90,
+        bulletType: 'laser',
+        maxHealth: 90,
+        armor: 0.15
+    }
 ];
 
 export const orbTypes = [
-    { name: 'speed', image: '../assets/orbs/speed.png' },
-    { name: 'damage', image: '../assets/orbs/damage.png' },
-    { name: 'health', image: '../assets/orbs/health.png' },
-    { name: 'rapid', image: '../assets/orbs/rapid-fire.png' },
-    { name: 'slow', image: '../assets/orbs/slowness.png' }
+    { name: 'speed', image: '../assets/orbs/speed-ver2.png' },
+    { name: 'damage', image: '../assets/orbs/damage-ver2.png' },
+    { name: 'health', image: '../assets/orbs/health-ver2.png' },
+    { name: 'rapid', image: '../assets/orbs/rapid-ver2.png' },
+    { name: 'slow', image: '../assets/orbs/slow-ver2.png' }
 ]
 
 export const mazeLayout = [

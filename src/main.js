@@ -1,4 +1,3 @@
-
 import { Orb } from "./components/orb.js";
 import { HealthBar } from "./components/healthbar.js";
 import {
@@ -18,7 +17,11 @@ import {
   orbTypes,
   mazeLayout,
 } from "./interface.js";
-import { renderArenaConfig, getConfig, determineMapSelection } from "./config.js";
+import {
+  renderArenaConfig,
+  getConfig,
+  determineMapSelection,
+} from "./config.js";
 import { renderOrbSpawn } from "./mechanics.js";
 
 const sketch = (p) => {
@@ -29,14 +32,14 @@ const sketch = (p) => {
   let roundMessage = "";
   let roundResetAt = 0;
   let gameState = {
-      players: [],
-      bot: null,
-      orbs: [],
-      bullet: null,
-      gameMode: null,
-      hallwayPositions: [],
-      pendingOrbSpawns: [],
-    };
+    players: [],
+    bot: null,
+    orbs: [],
+    bullet: null,
+    gameMode: null,
+    hallwayPositions: [],
+    pendingOrbSpawns: [],
+  };
   p.preload = () => {
     preloadImages(p);
   };
@@ -45,7 +48,12 @@ const sketch = (p) => {
     const selected = mazeLayout[mapIndex] || mazeLayout[0];
     removeTiles();
     tilesGroup = new p.Tiles(selected, 0, HEALTHBARHEIGHT + 70, TILEW, TILEH);
-    gameState.hallwayPositions = validHallwayPosition(selected, TILEW, TILEH, OFFSETY);
+    gameState.hallwayPositions = validHallwayPosition(
+      selected,
+      TILEW,
+      TILEH,
+      OFFSETY,
+    );
     return selected;
   }
 
@@ -56,7 +64,10 @@ const sketch = (p) => {
       tilesGroup.removeAll();
     } else if (typeof tilesGroup.remove === "function") {
       tilesGroup.remove();
-    } else if (Array.isArray(tilesGroup) || typeof tilesGroup.length === "number") {
+    } else if (
+      Array.isArray(tilesGroup) ||
+      typeof tilesGroup.length === "number"
+    ) {
       for (let i = tilesGroup.length - 1; i >= 0; i--) {
         const tile = tilesGroup[i];
         if (tile && typeof tile.remove === "function") tile.remove();
@@ -72,11 +83,13 @@ const sketch = (p) => {
       resetTank(gameState.players[1], WIDTH / 2 + 150, HEIGHT / 2);
     } else if (gameState.gameMode === 2) {
       resetTank(gameState.players[0], WIDTH / 2, HEIGHT / 2);
-      if (gameState.bot) resetTank(gameState.bot, WIDTH / 2 + 150, HEIGHT / 2 + 150);
+      if (gameState.bot)
+        resetTank(gameState.bot, WIDTH / 2 + 150, HEIGHT / 2 + 150);
     } else if (gameState.gameMode === 3) {
       resetTank(gameState.players[0], WIDTH / 2, HEIGHT / 2);
       resetTank(gameState.players[1], WIDTH / 2 + 150, HEIGHT / 2);
-      if (gameState.bot) resetTank(gameState.bot, WIDTH / 2 + 150, HEIGHT / 2 + 150);
+      if (gameState.bot)
+        resetTank(gameState.bot, WIDTH / 2 + 150, HEIGHT / 2 + 150);
     }
   }
 
@@ -178,42 +191,40 @@ const sketch = (p) => {
 
   p.setup = () => {
     new p.Canvas(WIDTH, HEIGHT);
-    
+
     gameState.bullet = new p.Group();
     const config = getConfig();
-    const modeString = config?.mode || 'bot'; // 'bot', 'coop', 'pvp'
-    
-    let mode = 1; 
-    if (modeString === 'bot') mode = 2;
-    else if (modeString === 'coop') mode = 3;
-    else if (modeString === 'pvp') mode = 1;
-    
+    const modeString = config?.mode || "bot";
+
+    let mode = 1;
+    if (modeString === "bot") mode = 2
+    else if (modeString === "pvp") mode = 1;
+
     gameState.gameMode = mode;
-    
+
     const wallsData = wallsColliderSetup(p, hWalls, vWalls, borderWalls);
     hWalls = wallsData.hWalls;
     vWalls = wallsData.vWalls;
     borderWalls = wallsData.borderWalls;
 
-    const { modeSelected } = renderArenaConfig(p, config, determineMapSelection(config?.map), mode, gameState.bullet);
+    const { modeSelected } = renderArenaConfig(
+      p,
+      config,
+      determineMapSelection(config?.map),
+      mode,
+      gameState.bullet,
+    );
 
     const players = modeSelected(mode);
     currentMapIndex = Math.max(0, determineMapSelection(config?.map) - 1);
     const selectedMap = renderMap(currentMapIndex);
     gameState.orbs = renderOrbSpawn(p, selectedMap, orbTypes);
 
-    // Initialize players based on game mode
     if (mode === 1) {
-      // PvP: player1 vs player2
       gameState.players = [players.player1, players.player2];
       gameState.bot = null;
     } else if (mode === 2) {
-      // VsBot: player vs bot
       gameState.players = [players.player];
-      gameState.bot = players.bot;
-    } else if (mode === 3) {
-      // Coop: player1 and player2 vs bot
-      gameState.players = [players.player1, players.player2];
       gameState.bot = players.bot;
     }
 
@@ -244,14 +255,14 @@ const sketch = (p) => {
       for (let i = 0; i < gameState.players.length; i++) {
         healthBarData.push({
           health: gameState.players[i].health,
-          name: `Player ${i + 1}`
+          name: `Player ${i + 1}`,
         });
       }
 
       if (gameState.bot) {
         healthBarData.push({
           health: gameState.bot.health,
-          name: "Bot"
+          name: "Bot",
         });
       }
 
@@ -274,7 +285,7 @@ const sketch = (p) => {
       const orb = gameState.orbs[i];
 
       let pickedUp = false;
-      
+
       // Check pickup by all players
       for (let player of gameState.players) {
         const pickup = orb.checkPickup(player);
@@ -297,11 +308,11 @@ const sketch = (p) => {
       if (pickedUp) {
         orb.remove();
         gameState.orbs.splice(i, 1);
-        
+
         // Schedule new orb spawn with random delay (1-5 seconds)
         const randomDelay = p.random(1000, 5000);
         gameState.pendingOrbSpawns.push({
-          spawnTime: p.millis() + randomDelay
+          spawnTime: p.millis() + randomDelay,
         });
       }
     }
@@ -310,30 +321,75 @@ const sketch = (p) => {
     for (let i = gameState.pendingOrbSpawns.length - 1; i >= 0; i--) {
       const pending = gameState.pendingOrbSpawns[i];
       if (p.millis() >= pending.spawnTime) {
-        spawnRandomOrb(gameState.hallwayPositions, orbTypes, gameState.orbs, p, Orb);
+        spawnRandomOrb(
+          gameState.hallwayPositions,
+          orbTypes,
+          gameState.orbs,
+          p,
+          Orb,
+        );
         gameState.pendingOrbSpawns.splice(i, 1);
       }
     }
 
-    // Handle bullet collisions and damage
+    // Track laser paths for visualization
+    for (let i = 0; i < gameState.bullet.length; i++) {
+      const bullet = gameState.bullet[i];
+      if (bullet._isLaser) {
+        if (!bullet._pathPoints) {
+          bullet._pathPoints = [];
+        }
+        bullet._pathPoints.push({ x: bullet.x, y: bullet.y });
+        if (bullet._pathPoints.length > 50) {
+          bullet._pathPoints.shift();
+        }
+      }
+    }
+
+    p.stroke(255, 223, 0, 200); 
+    p.strokeWeight(3);
+    for (let i = 0; i < gameState.bullet.length; i++) {
+      const bullet = gameState.bullet[i];
+      if (
+        bullet._isLaser &&
+        bullet._pathPoints &&
+        bullet._pathPoints.length > 1
+      ) {
+        p.noFill();
+        p.beginShape();
+        for (let j = 0; j < bullet._pathPoints.length; j++) {
+          p.vertex(bullet._pathPoints[j].x, bullet._pathPoints[j].y);
+        }
+        p.endShape();
+      }
+    }
+    p.noStroke();
+
     for (let i = gameState.bullet.length - 1; i >= 0; i--) {
       const bullet = gameState.bullet[i];
       let hitTarget = false;
 
-      // Check collision with all players
       for (let player of gameState.players) {
+        if (bullet._isLaser && bullet._shooter === player) {
+          continue;
+        }
+
         if (bullet.overlaps(player.sprite)) {
-          const calcDamage = calculateDamage(bullet);
+          const calcDamage = calculateDamage(bullet, p);
           player.playerHit(bullet, calcDamage);
           hitTarget = true;
           break;
         }
       }
 
-      // Check collision with bot if exists
       if (!hitTarget && gameState.bot) {
+        if (bullet._isLaser && bullet._shooter === gameState.bot) {
+          if (bullet.remove) bullet.remove();
+          continue;
+        }
+
         if (bullet.overlaps(gameState.bot.sprite)) {
-          const calcDamage = calculateDamage(bullet);
+          const calcDamage = calculateDamage(bullet, p);
           gameState.bot.playerHit(bullet, calcDamage);
           hitTarget = true;
         }
@@ -353,23 +409,19 @@ const sketch = (p) => {
       gameState.players[1].shoot();
     }
 
-    if (gameState.gameMode === 3 && p.kb.presses("m")) {
-      gameState.players[1].shoot();
-    }
-
     // Display health bars
     const healthBarData = [];
     for (let i = 0; i < gameState.players.length; i++) {
       healthBarData.push({
         health: gameState.players[i].health,
-        name: `Player ${i + 1}`
+        name: `Player ${i + 1}`,
       });
     }
 
     if (gameState.bot) {
       healthBarData.push({
         health: gameState.bot.health,
-        name: "Bot"
+        name: "Bot",
       });
     }
 
@@ -379,9 +431,8 @@ const sketch = (p) => {
     if (roundResult) {
       startRoundReset(roundResult);
     }
-  }
+  };
 };
-
 
 //this is just an eslint issue error, p5 needs to be globally accessible for the sketch to work
 new p5(sketch);
