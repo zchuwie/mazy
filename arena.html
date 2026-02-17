@@ -1,46 +1,83 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <script src="https://cdn.jsdelivr.net/npm/p5@1.11.4/lib/p5.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/p5@1.11.4/lib/addons/p5.sound.min.js"></script>
-    <script src="https://p5play.org/v3/planck.min.js"></script>
-    <script src="https://p5play.org/v3/p5play.js"></script>
-    <title>Mazy Arena</title>
-    <style>
-      * {
-        margin: 0 auto;
-        padding: 0;
-        box-sizing: border-box;
-      }
 
-      body {
-        height: 100dvh;
-        width: 100%;
-        overflow-y: hidden;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-      }
-          
-      #main-box {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        height: 700px;
-        width: 960px;
-        margin: 0;
-        background-color: #fff;
-        box-shadow:
-          0 8px 32px 0 rgba(0, 0, 0, 0.25),
-          0 1.5px 6px 0 rgba(0, 0, 0, 0.15);
-          border-radius: 2px;
-        }
-        </style>
-  </head>
-  <body>
-    <main id="main-box"></main>
-    <script type="module" src="./src/main.js"></script>
-  </body>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script src="https://cdn.jsdelivr.net/npm/p5@1.11.4/lib/p5.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/p5@1.11.4/lib/addons/p5.sound.min.js"></script>
+  <script src="https://p5play.org/v3/planck.min.js"></script>
+  <script src="https://p5play.org/v3/p5play.js"></script>
+  <title>Mazy Arena</title>
+  <style>
+    * {
+      margin: 0 auto;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      height: 100dvh;
+      width: 100%;
+      overflow-y: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    #main-box {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 700px;
+      width: 960px;
+      margin: 0;
+      background-color: #fff;
+      box-shadow:
+        0 8px 32px 0 rgba(0, 0, 0, 0.25),
+        0 1.5px 6px 0 rgba(0, 0, 0, 0.15);
+      border-radius: 2px;
+    }
+
+    /* ================= PAGE FADE ================= */
+    .page-fade {
+      position: fixed;
+      inset: 0;
+      background: #000;
+      opacity: 1;
+      pointer-events: none;
+      z-index: 9999;
+      transition: opacity 280ms ease-out;
+    }
+
+    /* fade OUT (menu page) */
+    body.is-fading-out .page-fade {
+      opacity: 1;
+    }
+
+    /* fade IN (arena page after load) */
+    body.is-fading-in .page-fade {
+      opacity: 0;
+    }
+  </style>
+</head>
+
+<body>
+  <main id="main-box"></main>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      // trigger fade IN
+      requestAnimationFrame(() => {
+        document.body.classList.add("is-fading-in");
+      });
+    });
+  </script>
+
+  <div class="page-fade" aria-hidden="true"></div>
+
+
+  <script type="module" src="./src/main.js"></script>
+</body>
+
 </html>
