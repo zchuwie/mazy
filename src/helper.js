@@ -1,16 +1,14 @@
 import { tankCharacters, orbTypes, HEIGHT, WIDTH, HEALTHBARHEIGHT } from "./interface.js";
 
-export function calculateDamage(b) {
-    let maxDamage = 20;
-    let minDamage = 5;
-    let maxDist = 600; 
+export function calculateDamage(b, p) {
+    let maxDamage = b._damage || 20; // Use bullet's base damage (from character)
+    let minDamage = maxDamage * 0.25; // 25% of max damage
+    let maxTime = b._life || 1000; // 5 seconds in milliseconds
     
-    if (typeof b._startX !== "number" || typeof b._startY !== "number") return minDamage;
-        
-    let dx = b.x - b._startX;
-    let dy = b.y - b._startY;
-    let dist = Math.sqrt(dx * dx + dy * dy);
-    let damage = minDamage + ((maxDamage - minDamage) * Math.min(dist, maxDist)) / maxDist;
+    if (typeof b._createdAt !== "number") return minDamage;
+    
+    let timeElapsed = p.millis() - b._createdAt;
+    let damage = minDamage + ((maxDamage - minDamage) * Math.min(timeElapsed, maxTime)) / maxTime;
     
     return Math.round(Math.min(damage, maxDamage));
 
