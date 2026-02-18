@@ -6,7 +6,7 @@ export const renderOrbSpawn = (p, map, orbTypes) => {
   const hallwayPositions = validHallwayPosition(map, TILEW, TILEH, OFFSETY);
   let orbs = [];
 
-  for (let i = 0; i < 5; i++) {
+  for (let i = 0; i < 8; i++) {
     spawnRandomOrb(hallwayPositions, orbTypes, orbs, p, Orb);
   }
 

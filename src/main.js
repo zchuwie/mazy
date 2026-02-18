@@ -39,7 +39,17 @@ const sketch = (p) => {
     gameMode: null,
     hallwayPositions: [],
     pendingOrbSpawns: [],
+    score: {
+      player1: 0,
+      player2: 0,
+      player: 0,
+      bot: 0,
+    },
+    matchStartMs: 0,
+    matchDurationSeconds: 0,
+    matchOver: false,
   };
+
   p.preload = () => {
     preloadImages(p);
   };
@@ -119,6 +129,13 @@ const sketch = (p) => {
     bot.state = "patrol";
     bot.wanderAngle = p.random(360);
     bot.wanderTimer = 0;
+    bot.currentNodeIndex = -1;
+    bot.nextNodeIndex = -1;
+    bot.pathQueue = [];
+    bot.wallAvoidanceActive = false;
+    bot.avoidanceTimer = 0;
+    bot.hasCalculatedRotation = false;
+    bot.isRotating = false;
   }
 
   function clearBullets() {
@@ -137,33 +154,155 @@ const sketch = (p) => {
     gameState.pendingOrbSpawns = [];
   }
 
-  function getRoundResult() {
+  function getRoundOutcome() {
     if (gameState.gameMode === 1) {
       const p1Dead = gameState.players[0].health <= 0;
       const p2Dead = gameState.players[1].health <= 0;
-      if (p1Dead && p2Dead) return "Draw";
-      if (p1Dead) return "Player 2 wins";
-      if (p2Dead) return "Player 1 wins";
+      if (p1Dead && p2Dead) return { message: "Draw", winnerKey: null };
+      if (p1Dead) return { message: "Player 2 wins", winnerKey: "player2" };
+      if (p2Dead) return { message: "Player 1 wins", winnerKey: "player1" };
     } else if (gameState.gameMode === 2) {
       const playerDead = gameState.players[0].health <= 0;
       const botDead = gameState.bot && gameState.bot.health <= 0;
-      if (playerDead && botDead) return "Draw";
-      if (playerDead) return "Bot wins";
-      if (botDead) return "Player wins";
+      if (playerDead && botDead) return { message: "Draw", winnerKey: null };
+      if (playerDead) return { message: "Bot wins", winnerKey: "bot" };
+      if (botDead) return { message: "Player wins", winnerKey: "player" };
     } else if (gameState.gameMode === 3) {
       const p1Dead = gameState.players[0].health <= 0;
       const p2Dead = gameState.players[1].health <= 0;
       const botDead = gameState.bot && gameState.bot.health <= 0;
-      if (botDead) return "Players win";
-      if (p1Dead && p2Dead) return "Bot wins";
+      if (botDead) return { message: "Players win", winnerKey: "players" };
+      if (p1Dead && p2Dead) return { message: "Bot wins", winnerKey: "bot" };
     }
-    return "";
+    return null;
   }
 
-  function startRoundReset(message) {
+  function awardWin(winnerKey) {
+    if (!winnerKey) return;
+    if (winnerKey === "player1") gameState.score.player1 += 1;
+    if (winnerKey === "player2") gameState.score.player2 += 1;
+    if (winnerKey === "player") gameState.score.player += 1;
+    if (winnerKey === "bot") gameState.score.bot += 1;
+    if (winnerKey === "players") {
+      gameState.score.player1 += 1;
+      gameState.score.player2 += 1;
+    }
+  }
+
+  function getPointsForPlayerIndex(index) {
+    if (gameState.gameMode === 1) {
+      return index === 0 ? gameState.score.player1 : gameState.score.player2;
+    }
+    if (gameState.gameMode === 2) {
+      return gameState.score.player;
+    }
+    if (gameState.gameMode === 3) {
+      return index === 0 ? gameState.score.player1 : gameState.score.player2;
+    }
+    return 0;
+  }
+
+  function getBotPoints() {
+    return gameState.score.bot;
+  }
+
+  function startRoundReset(outcome) {
     roundOver = true;
-    roundMessage = message;
+    roundMessage = outcome.message;
     roundResetAt = p.millis() + 1500;
+    awardWin(outcome.winnerKey);
+  }
+
+  function getMatchDurationSeconds() {
+    const storedTime = sessionStorage.getItem("time");
+    let parsed = Number.parseInt(storedTime, 10);
+    if (!Number.isFinite(parsed) || parsed <= 0) {
+      const configRaw = sessionStorage.getItem("gameConfig");
+      if (configRaw) {
+        try {
+          const config = JSON.parse(configRaw);
+          parsed = Number.parseInt(config?.time, 10);
+        } catch {
+          parsed = 0;
+        }
+      }
+    }
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+  }
+
+  function getMatchWinnerMessage() {
+    if (gameState.gameMode === 1) {
+      if (gameState.score.player1 === gameState.score.player2) return "Draw";
+      return gameState.score.player1 > gameState.score.player2
+        ? "Player 1 wins"
+        : "Player 2 wins";
+    }
+    if (gameState.gameMode === 2) {
+      if (gameState.score.player === gameState.score.bot) return "Draw";
+      return gameState.score.player > gameState.score.bot
+        ? "Player wins"
+        : "Bot wins";
+    }
+    if (gameState.gameMode === 3) {
+      const playersScore = gameState.score.player1 + gameState.score.player2;
+      if (playersScore === gameState.score.bot) return "Draw";
+      return playersScore > gameState.score.bot ? "Players win" : "Bot wins";
+    }
+    return "Draw";
+  }
+
+  function getAllWalls() {
+    const allWalls = [];
+
+    if (hWalls && hWalls.length) {
+      for (let i = 0; i < hWalls.length; i++) {
+        const wall = hWalls[i];
+        if (wall) allWalls.push(wall);
+      }
+    }
+
+    if (vWalls && vWalls.length) {
+      for (let i = 0; i < vWalls.length; i++) {
+        const wall = vWalls[i];
+        if (wall) allWalls.push(wall);
+      }
+    }
+
+    if (tilesGroup) {
+      if (typeof tilesGroup.length === "number") {
+        for (let i = 0; i < tilesGroup.length; i++) {
+          const tile = tilesGroup[i];
+          if (tile && tile.collider !== "none") {
+            allWalls.push(tile);
+          }
+        }
+      }
+    }
+
+    return allWalls;
+  }
+
+  function getBorderBounds() {
+    return {
+      left: 10,
+      right: WIDTH - 10,
+      top: HEALTHBARHEIGHT,
+      bottom: HEIGHT - 10
+    };
+  }
+
+  function setupBotPatrol() {
+    if (gameState.bot) {
+      gameState.bot.setMazeData(
+        mazeLayout[currentMapIndex],
+        TILEW,
+        TILEH,
+        OFFSETY
+      );
+      gameState.bot.setWalls(getAllWalls());
+      gameState.bot.setBorderBounds(getBorderBounds());
+      gameState.bot.generatePatrolRoute();
+    }
   }
 
   function resetRound() {
@@ -184,7 +323,19 @@ const sketch = (p) => {
     clearOrbs();
     clearBullets();
     applySpawnPositions();
-    if (gameState.bot) resetBotState(gameState.bot);
+
+    if (gameState.bot) {
+      resetBotState(gameState.bot);
+      gameState.bot.setMazeData(
+        mazeLayout[currentMapIndex],
+        TILEW,
+        TILEH,
+        OFFSETY
+      );
+      gameState.bot.setWalls(getAllWalls());
+      gameState.bot.setBorderBounds(getBorderBounds());
+      gameState.bot.generatePatrolRoute();
+    }
 
     gameState.orbs = renderOrbSpawn(p, selectedMap, orbTypes);
   }
@@ -197,7 +348,7 @@ const sketch = (p) => {
     const modeString = config?.mode || "bot";
 
     let mode = 1;
-    if (modeString === "bot") mode = 2
+    if (modeString === "bot") mode = 2;
     else if (modeString === "pvp") mode = 1;
 
     gameState.gameMode = mode;
@@ -229,6 +380,11 @@ const sketch = (p) => {
     }
 
     applySpawnPositions();
+    setupBotPatrol();
+
+    gameState.matchDurationSeconds = getMatchDurationSeconds();
+    gameState.matchStartMs = p.millis();
+    gameState.matchOver = false;
   };
 
   p.draw = () => {
@@ -238,6 +394,39 @@ const sketch = (p) => {
     p.noStroke();
     p.rect(0, 0, WIDTH, HEALTHBARHEIGHT);
     p.fill(255);
+
+    if (!gameState.matchOver && gameState.matchDurationSeconds > 0) {
+      const elapsedSeconds = Math.floor(
+        (p.millis() - gameState.matchStartMs) / 1000,
+      );
+      if (elapsedSeconds >= gameState.matchDurationSeconds) {
+        gameState.matchOver = true;
+        roundOver = true;
+        roundMessage = `Time up: ${getMatchWinnerMessage()}`;
+      }
+    }
+
+    if (gameState.matchOver) {
+      const healthBarData = [];
+      for (let i = 0; i < gameState.players.length; i++) {
+        healthBarData.push({
+          health: gameState.players[i].health,
+          name: `Player ${i + 1}`,
+          points: getPointsForPlayerIndex(i),
+        });
+      }
+
+      if (gameState.bot) {
+        healthBarData.push({
+          health: gameState.bot.health,
+          name: "Bot",
+          points: getBotPoints(),
+        });
+      }
+
+      HealthBar(p, healthBarData, WIDTH);
+      return;
+    }
 
     if (roundOver) {
       p.push();
@@ -256,6 +445,7 @@ const sketch = (p) => {
         healthBarData.push({
           health: gameState.players[i].health,
           name: `Player ${i + 1}`,
+          points: getPointsForPlayerIndex(i),
         });
       }
 
@@ -263,6 +453,7 @@ const sketch = (p) => {
         healthBarData.push({
           health: gameState.bot.health,
           name: "Bot",
+          points: getBotPoints(),
         });
       }
 
@@ -286,7 +477,6 @@ const sketch = (p) => {
 
       let pickedUp = false;
 
-      // Check pickup by all players
       for (let player of gameState.players) {
         const pickup = orb.checkPickup(player);
         if (pickup) {
@@ -296,7 +486,6 @@ const sketch = (p) => {
         }
       }
 
-      // Check pickup by bot if exists
       if (!pickedUp && gameState.bot) {
         const pickup = orb.checkPickup(gameState.bot);
         if (pickup) {
@@ -309,7 +498,13 @@ const sketch = (p) => {
         orb.remove();
         gameState.orbs.splice(i, 1);
 
-        // Schedule new orb spawn with random delay (1-5 seconds)
+        const randomDelay = p.random(1000, 5000);
+        gameState.pendingOrbSpawns.push({
+          spawnTime: p.millis() + randomDelay,
+        });
+      } else if (orb.checkDespawn()) {
+        orb.remove();
+        gameState.orbs.splice(i, 1);
         const randomDelay = p.random(1000, 5000);
         gameState.pendingOrbSpawns.push({
           spawnTime: p.millis() + randomDelay,
@@ -329,6 +524,7 @@ const sketch = (p) => {
           Orb,
         );
         gameState.pendingOrbSpawns.splice(i, 1);
+        break;
       }
     }
 
@@ -346,7 +542,7 @@ const sketch = (p) => {
       }
     }
 
-    p.stroke(255, 223, 0, 200); 
+    p.stroke(255, 223, 0, 200);
     p.strokeWeight(3);
     for (let i = 0; i < gameState.bullet.length; i++) {
       const bullet = gameState.bullet[i];
@@ -365,6 +561,7 @@ const sketch = (p) => {
     }
     p.noStroke();
 
+    // Handle bullet collisions
     for (let i = gameState.bullet.length - 1; i >= 0; i--) {
       const bullet = gameState.bullet[i];
       let hitTarget = false;
@@ -400,7 +597,45 @@ const sketch = (p) => {
       }
     }
 
-    // Handle shooting controls based on mode
+    // Handle laser path burning damage
+    for (let i = 0; i < gameState.bullet.length; i++) {
+      const bullet = gameState.bullet[i];
+      if (
+        bullet._isLaser &&
+        bullet._pathPoints &&
+        bullet._pathPoints.length > 0
+      ) {
+        for (let pathPoint of bullet._pathPoints) {
+          for (let player of gameState.players) {
+            if (bullet._shooter === player) continue;
+
+            const dist = p.dist(
+              pathPoint.x,
+              pathPoint.y,
+              player.sprite.x,
+              player.sprite.y,
+            );
+            if (dist < player.sprite.diameter / 2 + 10) {
+              player.health -= 0.05;
+            }
+          }
+
+          if (gameState.bot && bullet._shooter !== gameState.bot) {
+            const dist = p.dist(
+              pathPoint.x,
+              pathPoint.y,
+              gameState.bot.sprite.x,
+              gameState.bot.sprite.y,
+            );
+            if (dist < gameState.bot.sprite.diameter / 2 + 10) {
+              gameState.bot.health -= 0.05;
+            }
+          }
+        }
+      }
+    }
+
+    // Handle shooting controls
     if (p.kb.presses("q")) {
       gameState.players[0].shoot();
     }
@@ -415,6 +650,7 @@ const sketch = (p) => {
       healthBarData.push({
         health: gameState.players[i].health,
         name: `Player ${i + 1}`,
+        points: getPointsForPlayerIndex(i),
       });
     }
 
@@ -422,17 +658,22 @@ const sketch = (p) => {
       healthBarData.push({
         health: gameState.bot.health,
         name: "Bot",
+        points: getBotPoints(),
       });
     }
 
     HealthBar(p, healthBarData, WIDTH);
 
-    const roundResult = getRoundResult();
-    if (roundResult) {
-      startRoundReset(roundResult);
+    const roundOutcome = getRoundOutcome();
+    if (roundOutcome) {
+      startRoundReset(roundOutcome);
+    }
+
+    if (p.kb.presses("escape")) {
+      sessionStorage.removeItem("gameConfig");
+      window.location.href = "index.html";
     }
   };
 };
 
-//this is just an eslint issue error, p5 needs to be globally accessible for the sketch to work
 new p5(sketch);
