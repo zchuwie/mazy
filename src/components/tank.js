@@ -61,16 +61,25 @@ export class Tank {
     this._intendedVx = 0;
     this._intendedVy = 0;
     this._moveDir = 0;
+
+    // Burning effect state
+    this.burningEndTime = null;
+    this.lastBurnDamageTime = null;
+    this.burningDamagePerTick = 0.3; // Minimal damage per tick
   }
 
   update() {
     this.updateEffects();
 
-    if (this.p.kb.pressing(this.controls.left)) {
-      this.sprite.rotation -= this.rotationSpeed;
-    }
-    if (this.p.kb.pressing(this.controls.right)) {
-      this.sprite.rotation += this.rotationSpeed;
+    const isFrozen = this.activeEffects.some(effect => effect.type === "speed" && effect.value === 0);
+
+    if (!isFrozen) {
+      if (this.p.kb.pressing(this.controls.left)) {
+        this.sprite.rotation -= this.rotationSpeed;
+      }
+      if (this.p.kb.pressing(this.controls.right)) {
+        this.sprite.rotation += this.rotationSpeed;
+      }
     }
 
     const movingForward = this.p.kb.pressing(this.controls.forward);
@@ -152,6 +161,18 @@ export class Tank {
       return true;
     });
 
+    // Apply burning damage
+    if (this.burningEndTime && currentTime < this.burningEndTime) {
+      if (!this.lastBurnDamageTime || currentTime - this.lastBurnDamageTime >= 100) {
+        this.health -= this.burningDamagePerTick;
+        this.lastBurnDamageTime = currentTime;
+        console.log(`Burning damage: ${this.burningDamagePerTick} HP`);
+      }
+    } else if (this.burningEndTime && currentTime >= this.burningEndTime) {
+      this.burningEndTime = null;
+      this.lastBurnDamageTime = null;
+    }
+
     this.speedMultiplier = 1;
     this.damageMultiplier = 1;
     this.cooldownMultiplier = 1;
@@ -190,6 +211,21 @@ export class Tank {
       value: multiplier,
       endTime: this.p.millis() + duration,
     });
+  }
+
+  applyFreeze(duration) {
+    console.log(`Applying freeze for ${duration}ms`);
+    this.activeEffects.push({
+      type: "speed",
+      value: 0,
+      endTime: this.p.millis() + duration,
+    });
+  }
+
+  applyBurning(duration) {
+    console.log(`Applying burning effect for ${duration}ms`);
+    this.burningEndTime = this.p.millis() + duration;
+    this.lastBurnDamageTime = this.p.millis();
   }
 
   heal(amount) {

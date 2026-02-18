@@ -58,7 +58,8 @@ export const orbTypes = [
     { name: 'damage', image: '../assets/orbs/damage-ver2.png' },
     { name: 'health', image: '../assets/orbs/health-ver2.png' },
     { name: 'rapid', image: '../assets/orbs/rapid-ver2.png' },
-    { name: 'slow', image: '../assets/orbs/slow-ver2.png' }
+    { name: 'slow', image: '../assets/orbs/slow-ver2.png' },
+    { name: 'freeze', image: '../assets/orbs/speed.png' }
 ]
 
 export const mazeLayout = [
@@ -244,9 +245,3 @@ export const HEALTHBARHEIGHT = 75;
 export const TILEW = 36;
 export const TILEH = 40;
 export const OFFSETY = HEALTHBARHEIGHT + 70;
-
-
-
-
-
-

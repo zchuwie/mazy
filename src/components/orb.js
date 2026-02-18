@@ -9,6 +9,8 @@ export class Orb {
     this.active = true;
     this.respawnTime = 10000;
     this.lastPickupTime = 0;
+    this.spawnTime = p.millis();
+    this.despawnTime = p.millis() + p.random(10000, 15000);
     this.setOrbImage();
   }
 
@@ -38,6 +40,9 @@ export class Orb {
       case "slow":
         this.sprite.color = "purple";
         break;
+      case "freeze":
+        this.sprite.color = "cyan";
+        break;
       default:
         this.sprite.color = "white";
     }
@@ -54,6 +59,10 @@ export class Orb {
     return null;
   }
 
+  checkDespawn() {
+    return this.p.millis() >= this.despawnTime;
+  }
+
   remove() {
     this.sprite.remove();
   }
@@ -64,7 +73,7 @@ export class Orb {
 
     switch (this.type) {
       case "speed":
-        player.applySpeedBoost(1.5, duration);
+        player.applySpeedBoost(1.1, duration);
         break;
       case "damage":
         player.applyDamageBoost(1.5, duration);
@@ -77,6 +86,9 @@ export class Orb {
         break;
       case "slow":
         player.applySpeedBoost(0.5, duration);
+        break;
+      case "freeze":
+        player.applyFreeze(2000);
         break;
       case "weak":
         player.applyDamageBoost(0.5, duration);
