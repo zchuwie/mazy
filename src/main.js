@@ -129,13 +129,6 @@ const sketch = (p) => {
     bot.state = "patrol";
     bot.wanderAngle = p.random(360);
     bot.wanderTimer = 0;
-    bot.currentNodeIndex = -1;
-    bot.nextNodeIndex = -1;
-    bot.pathQueue = [];
-    bot.wallAvoidanceActive = false;
-    bot.avoidanceTimer = 0;
-    bot.hasCalculatedRotation = false;
-    bot.isRotating = false;
   }
 
   function clearBullets() {
@@ -251,59 +244,7 @@ const sketch = (p) => {
     return "Draw";
   }
 
-  function getAllWalls() {
-    const allWalls = [];
 
-    if (hWalls && hWalls.length) {
-      for (let i = 0; i < hWalls.length; i++) {
-        const wall = hWalls[i];
-        if (wall) allWalls.push(wall);
-      }
-    }
-
-    if (vWalls && vWalls.length) {
-      for (let i = 0; i < vWalls.length; i++) {
-        const wall = vWalls[i];
-        if (wall) allWalls.push(wall);
-      }
-    }
-
-    if (tilesGroup) {
-      if (typeof tilesGroup.length === "number") {
-        for (let i = 0; i < tilesGroup.length; i++) {
-          const tile = tilesGroup[i];
-          if (tile && tile.collider !== "none") {
-            allWalls.push(tile);
-          }
-        }
-      }
-    }
-
-    return allWalls;
-  }
-
-  function getBorderBounds() {
-    return {
-      left: 10,
-      right: WIDTH - 10,
-      top: HEALTHBARHEIGHT,
-      bottom: HEIGHT - 10
-    };
-  }
-
-  function setupBotPatrol() {
-    if (gameState.bot) {
-      gameState.bot.setMazeData(
-        mazeLayout[currentMapIndex],
-        TILEW,
-        TILEH,
-        OFFSETY
-      );
-      gameState.bot.setWalls(getAllWalls());
-      gameState.bot.setBorderBounds(getBorderBounds());
-      gameState.bot.generatePatrolRoute();
-    }
-  }
 
   function resetRound() {
     roundOver = false;
@@ -326,15 +267,6 @@ const sketch = (p) => {
 
     if (gameState.bot) {
       resetBotState(gameState.bot);
-      gameState.bot.setMazeData(
-        mazeLayout[currentMapIndex],
-        TILEW,
-        TILEH,
-        OFFSETY
-      );
-      gameState.bot.setWalls(getAllWalls());
-      gameState.bot.setBorderBounds(getBorderBounds());
-      gameState.bot.generatePatrolRoute();
     }
 
     gameState.orbs = renderOrbSpawn(p, selectedMap, orbTypes);
@@ -380,7 +312,6 @@ const sketch = (p) => {
     }
 
     applySpawnPositions();
-    setupBotPatrol();
 
     gameState.matchDurationSeconds = getMatchDurationSeconds();
     gameState.matchStartMs = p.millis();
