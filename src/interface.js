@@ -42,7 +42,7 @@ export const tankCharacters = [
         name: 'Tank Delta',
         image: '../assets/characters/delta/Tank-Delta.png',
         baseSpeed: 5,
-        shootCooldown: 200,
+        shootCooldown: 1000,
         baseDamage: 18,
         bulletSpeed: 14,
         bulletDiameter: 7,
@@ -54,12 +54,12 @@ export const tankCharacters = [
 ];
 
 export const orbTypes = [
-    { name: 'speed', image: '../assets/orbs/speed-ver2.png' },
-    { name: 'damage', image: '../assets/orbs/damage-ver2.png' },
-    { name: 'health', image: '../assets/orbs/health-ver2.png' },
-    { name: 'rapid', image: '../assets/orbs/rapid-ver2.png' },
-    { name: 'slow', image: '../assets/orbs/slow-ver2.png' },
-    { name: 'freeze', image: '../assets/orbs/speed.png' }
+    { name: 'speed', image: '../assets/orbs/speed.png' },
+    { name: 'damage', image: '../assets/orbs/damage.png' },
+    { name: 'health', image: '../assets/orbs/health.png' },
+    { name: 'rapid', image: '../assets/orbs/rapid.png' },
+    { name: 'slow', image: '../assets/orbs/slow.png' },
+    { name: 'freeze', image: '../assets/orbs/freeze.png' }
 ]
 
 export const mazeLayout = [

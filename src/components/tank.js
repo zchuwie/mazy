@@ -244,6 +244,7 @@ export class Tank {
     bullet._startX = x;
     bullet._startY = y;
     bullet._damage = this.baseDamage * this.damageMultiplier;
+    bullet._shooter = this;
 
     console.log(
       `${this.bulletType} bullet | dmg: ${bullet._damage} | spd: ${bullet.speed} | life: ${bullet.life}`,

@@ -120,15 +120,24 @@ const sketch = (p) => {
 
   function resetBotState(bot) {
     if (!bot) return;
-    bot.targetRotation = bot.sprite.rotation;
-    bot.isStuck = false;
-    bot.stuckCounter = 0;
+    bot.state         = "patrol";
+    bot.lastState     = "";
+    bot.lastThinkTime = 0;
+    bot.stuckCounter      = 0;
+    bot.stuckEscapeUntil  = 0;
+    bot.escapeRotation    = 0;
     bot.lastPositionCheck = { x: bot.sprite.x, y: bot.sprite.y };
-    bot.lastSeenPosition = null;
-    bot.searchTimer = 0;
-    bot.state = "patrol";
-    bot.wanderAngle = p.random(360);
-    bot.wanderTimer = 0;
+    bot.lastSeenPos  = null;
+    bot.lastSeenTime = 0;
+    bot.patrolTarget = null;
+    bot.isDodging     = false;
+    bot.dodgeUntil    = 0;
+    bot.dodgeForward  = true;
+    bot.lastDodgeTime = 0;
+    bot.posHistory      = [];
+    bot.lastHistoryTime = 0;
+    bot.nearbyOrbs      = [];
+    bot.target = null;
   }
 
   function clearBullets() {
@@ -313,6 +322,11 @@ const sketch = (p) => {
 
     applySpawnPositions();
 
+    // Give the bot references to wall groups so it can do line-of-sight checks
+    if (gameState.bot && gameState.bot.setWallGroups) {
+      gameState.bot.setWallGroups([hWalls, vWalls, borderWalls]);
+    }
+
     gameState.matchDurationSeconds = getMatchDurationSeconds();
     gameState.matchStartMs = p.millis();
     gameState.matchOver = false;
@@ -400,8 +414,15 @@ const sketch = (p) => {
     // Update bot if exists
     if (gameState.bot) {
       // Set target to first player if not already set or player changed
-      if (gameState.players.length > 0 && gameState.bot.target !== gameState.players[0]) {
-        gameState.bot.setTarget(gameState.players[0]);
+      const _living = gameState.players.filter(pl => pl.health > 0);
+      if (_living.length > 0) {
+        let _closest = _living[0];
+        let _closestDist = Infinity;
+        for (const _pl of _living) {
+          const _d = Math.hypot(_pl.sprite.x - gameState.bot.sprite.x, _pl.sprite.y - gameState.bot.sprite.y);
+          if (_d < _closestDist) { _closestDist = _d; _closest = _pl; }
+        }
+        if (gameState.bot.target !== _closest) gameState.bot.setTarget(_closest);
       }
       gameState.bot.update(gameState.orbs);
     }
@@ -502,7 +523,7 @@ const sketch = (p) => {
       let hitTarget = false;
 
       for (let player of gameState.players) {
-        if (bullet._isLaser && bullet._shooter === player) {
+        if (bullet._shooter === player) {
           continue;
         }
 
@@ -515,8 +536,7 @@ const sketch = (p) => {
       }
 
       if (!hitTarget && gameState.bot) {
-        if (bullet._isLaser && bullet._shooter === gameState.bot) {
-          if (bullet.remove) bullet.remove();
+        if (bullet._shooter === gameState.bot) {
           continue;
         }
 
