@@ -2,7 +2,7 @@ export const tankCharacters = [
     {
         name: 'Tank Alpha',
         image: '../assets/characters/alpha/Tank-Alpha.png',
-        baseSpeed: 9,
+        baseSpeed: 5,
         shootCooldown: 450,
         baseDamage: 20,
         bulletSpeed: 16,
@@ -28,7 +28,7 @@ export const tankCharacters = [
     {
         name: 'Tank Cobra',
         image: '../assets/characters/cobra/Tank-Cobra.png',
-        baseSpeed: 12,
+        baseSpeed: 5,
         shootCooldown: 300,
         baseDamage: 20,
         bulletSpeed: 12,
@@ -41,7 +41,7 @@ export const tankCharacters = [
     {
         name: 'Tank Delta',
         image: '../assets/characters/delta/Tank-Delta.png',
-        baseSpeed: 8,
+        baseSpeed: 5,
         shootCooldown: 200,
         baseDamage: 18,
         bulletSpeed: 14,

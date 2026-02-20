@@ -26,8 +26,8 @@ export class Tank {
     this.health = 100;
     this.shootCooldown = character?.shootCooldown || 500;
     this.controls = controls;
-    this.baseSpeed = character?.baseSpeed || 8;
-    this.moveSpeed = (character?.baseSpeed || 8) * 0.75;
+    this.baseSpeed = character?.baseSpeed || 5;
+    this.moveSpeed = (character?.baseSpeed || 5) * 0.75;
     this.rotationSpeed = 5;
     this.lastShotTime = 0;
 
@@ -120,33 +120,6 @@ export class Tank {
       this._moveDir = 0;
       this._intendedVx = 0;
       this._intendedVy = 0;
-      this._blocked = false;
-    }
-  }
-
-  // Must be called at the END of p.draw(), after p5play physics resolves
-  postUpdate() {
-    if (this._moveDir === 0) return;
-
-    const intendedSpeed = Math.sqrt(
-      this._intendedVx * this._intendedVx + this._intendedVy * this._intendedVy,
-    );
-    if (intendedSpeed === 0) return;
-
-    const nx = this._intendedVx / intendedSpeed;
-    const ny = this._intendedVy / intendedSpeed;
-
-    // How much of our intended velocity survived physics?
-    const actualProjected = this.sprite.vel.x * nx + this.sprite.vel.y * ny;
-
-    if (actualProjected < intendedSpeed * 0.3) {
-      // Wall ate our velocity — mark as blocked
-      this._blocked = true;
-      this._lastBlockedNx = nx;
-      this._lastBlockedNy = ny;
-      this.sprite.vel.x = 0;
-      this.sprite.vel.y = 0;
-    } else {
       this._blocked = false;
     }
   }

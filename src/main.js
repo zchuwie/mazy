@@ -399,7 +399,11 @@ const sketch = (p) => {
 
     // Update bot if exists
     if (gameState.bot) {
-      gameState.bot.update();
+      // Set target to first player if not already set or player changed
+      if (gameState.players.length > 0 && gameState.bot.target !== gameState.players[0]) {
+        gameState.bot.setTarget(gameState.players[0]);
+      }
+      gameState.bot.update(gameState.orbs);
     }
 
     // Handle orb pickups
