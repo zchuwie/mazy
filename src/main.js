@@ -1,5 +1,7 @@
+// ./src/main.js (FULL UPDATED)
+
 import { Orb } from "./components/orb.js";
-import { HealthBar } from "./components/healthbar.js";
+import { updateHud } from "./components/healthbar.js";
 import {
   preloadImages,
   wallsColliderSetup,
@@ -31,6 +33,7 @@ const sketch = (p) => {
   let roundOver = false;
   let roundMessage = "";
   let roundResetAt = 0;
+
   let gameState = {
     players: [],
     bot: null,
@@ -120,23 +123,23 @@ const sketch = (p) => {
 
   function resetBotState(bot) {
     if (!bot) return;
-    bot.state         = "patrol";
-    bot.lastState     = "";
+    bot.state = "patrol";
+    bot.lastState = "";
     bot.lastThinkTime = 0;
-    bot.stuckCounter      = 0;
-    bot.stuckEscapeUntil  = 0;
-    bot.escapeRotation    = 0;
+    bot.stuckCounter = 0;
+    bot.stuckEscapeUntil = 0;
+    bot.escapeRotation = 0;
     bot.lastPositionCheck = { x: bot.sprite.x, y: bot.sprite.y };
-    bot.lastSeenPos  = null;
+    bot.lastSeenPos = null;
     bot.lastSeenTime = 0;
     bot.patrolTarget = null;
-    bot.isDodging     = false;
-    bot.dodgeUntil    = 0;
-    bot.dodgeForward  = true;
+    bot.isDodging = false;
+    bot.dodgeUntil = 0;
+    bot.dodgeForward = true;
     bot.lastDodgeTime = 0;
-    bot.posHistory      = [];
+    bot.posHistory = [];
     bot.lastHistoryTime = 0;
-    bot.nearbyOrbs      = [];
+    bot.nearbyOrbs = [];
     bot.target = null;
   }
 
@@ -191,23 +194,6 @@ const sketch = (p) => {
     }
   }
 
-  function getPointsForPlayerIndex(index) {
-    if (gameState.gameMode === 1) {
-      return index === 0 ? gameState.score.player1 : gameState.score.player2;
-    }
-    if (gameState.gameMode === 2) {
-      return gameState.score.player;
-    }
-    if (gameState.gameMode === 3) {
-      return index === 0 ? gameState.score.player1 : gameState.score.player2;
-    }
-    return 0;
-  }
-
-  function getBotPoints() {
-    return gameState.score.bot;
-  }
-
   function startRoundReset(outcome) {
     roundOver = true;
     roundMessage = outcome.message;
@@ -253,8 +239,6 @@ const sketch = (p) => {
     return "Draw";
   }
 
-
-
   function resetRound() {
     roundOver = false;
     roundMessage = "";
@@ -274,9 +258,7 @@ const sketch = (p) => {
     clearBullets();
     applySpawnPositions();
 
-    if (gameState.bot) {
-      resetBotState(gameState.bot);
-    }
+    if (gameState.bot) resetBotState(gameState.bot);
 
     gameState.orbs = renderOrbSpawn(p, selectedMap, orbTypes);
   }
@@ -322,7 +304,6 @@ const sketch = (p) => {
 
     applySpawnPositions();
 
-    // Give the bot references to wall groups so it can do line-of-sight checks
     if (gameState.bot && gameState.bot.setWallGroups) {
       gameState.bot.setWallGroups([hWalls, vWalls, borderWalls]);
     }
@@ -335,11 +316,7 @@ const sketch = (p) => {
   p.draw = () => {
     p.background(220);
 
-    p.fill(100);
-    p.noStroke();
-    p.rect(0, 0, WIDTH, HEALTHBARHEIGHT);
-    p.fill(255);
-
+    // Match timer logic
     if (!gameState.matchOver && gameState.matchDurationSeconds > 0) {
       const elapsedSeconds = Math.floor(
         (p.millis() - gameState.matchStartMs) / 1000,
@@ -351,25 +328,26 @@ const sketch = (p) => {
       }
     }
 
+    // Update HTML HUD (timer + bars)
+    let remainingSeconds = 0;
+    if (gameState.matchDurationSeconds > 0) {
+      const elapsedSeconds = Math.floor(
+        (p.millis() - gameState.matchStartMs) / 1000,
+      );
+      remainingSeconds = Math.max(
+        0,
+        gameState.matchDurationSeconds - elapsedSeconds,
+      );
+    }
+
+    updateHud({
+      mode: gameState.gameMode,
+      players: gameState.players,
+      bot: gameState.bot,
+      remainingSeconds,
+    });
+
     if (gameState.matchOver) {
-      const healthBarData = [];
-      for (let i = 0; i < gameState.players.length; i++) {
-        healthBarData.push({
-          health: gameState.players[i].health,
-          name: `Player ${i + 1}`,
-          points: getPointsForPlayerIndex(i),
-        });
-      }
-
-      if (gameState.bot) {
-        healthBarData.push({
-          health: gameState.bot.health,
-          name: "Bot",
-          points: getBotPoints(),
-        });
-      }
-
-      HealthBar(p, healthBarData, WIDTH);
       return;
     }
 
@@ -384,25 +362,6 @@ const sketch = (p) => {
       if (p.millis() >= roundResetAt) {
         resetRound();
       }
-
-      const healthBarData = [];
-      for (let i = 0; i < gameState.players.length; i++) {
-        healthBarData.push({
-          health: gameState.players[i].health,
-          name: `Player ${i + 1}`,
-          points: getPointsForPlayerIndex(i),
-        });
-      }
-
-      if (gameState.bot) {
-        healthBarData.push({
-          health: gameState.bot.health,
-          name: "Bot",
-          points: getBotPoints(),
-        });
-      }
-
-      HealthBar(p, healthBarData, WIDTH);
       return;
     }
 
@@ -413,14 +372,19 @@ const sketch = (p) => {
 
     // Update bot if exists
     if (gameState.bot) {
-      // Set target to first player if not already set or player changed
-      const _living = gameState.players.filter(pl => pl.health > 0);
+      const _living = gameState.players.filter((pl) => pl.health > 0);
       if (_living.length > 0) {
         let _closest = _living[0];
         let _closestDist = Infinity;
         for (const _pl of _living) {
-          const _d = Math.hypot(_pl.sprite.x - gameState.bot.sprite.x, _pl.sprite.y - gameState.bot.sprite.y);
-          if (_d < _closestDist) { _closestDist = _d; _closest = _pl; }
+          const _d = Math.hypot(
+            _pl.sprite.x - gameState.bot.sprite.x,
+            _pl.sprite.y - gameState.bot.sprite.y,
+          );
+          if (_d < _closestDist) {
+            _closestDist = _d;
+            _closest = _pl;
+          }
         }
         if (gameState.bot.target !== _closest) gameState.bot.setTarget(_closest);
       }
@@ -430,7 +394,6 @@ const sketch = (p) => {
     // Handle orb pickups
     for (let i = gameState.orbs.length - 1; i >= 0; i--) {
       const orb = gameState.orbs[i];
-
       let pickedUp = false;
 
       for (let player of gameState.players) {
@@ -461,6 +424,7 @@ const sketch = (p) => {
       } else if (orb.checkDespawn()) {
         orb.remove();
         gameState.orbs.splice(i, 1);
+
         const randomDelay = p.random(1000, 5000);
         gameState.pendingOrbSpawns.push({
           spawnTime: p.millis() + randomDelay,
@@ -488,13 +452,9 @@ const sketch = (p) => {
     for (let i = 0; i < gameState.bullet.length; i++) {
       const bullet = gameState.bullet[i];
       if (bullet._isLaser) {
-        if (!bullet._pathPoints) {
-          bullet._pathPoints = [];
-        }
+        if (!bullet._pathPoints) bullet._pathPoints = [];
         bullet._pathPoints.push({ x: bullet.x, y: bullet.y });
-        if (bullet._pathPoints.length > 50) {
-          bullet._pathPoints.shift();
-        }
+        if (bullet._pathPoints.length > 50) bullet._pathPoints.shift();
       }
     }
 
@@ -517,15 +477,19 @@ const sketch = (p) => {
     }
     p.noStroke();
 
-    // Handle bullet collisions
+    // Handle bullet collisions (SELF-DAMAGE ENABLED)
     for (let i = gameState.bullet.length - 1; i >= 0; i--) {
       const bullet = gameState.bullet[i];
       let hitTarget = false;
 
+      // Grace time so bullets don't instantly hit the shooter on spawn
+      if (bullet._spawnMs == null) bullet._spawnMs = p.millis();
+      const bulletAgeMs = p.millis() - bullet._spawnMs;
+      const selfGraceMs = 120;
+
       for (let player of gameState.players) {
-        if (bullet._shooter === player) {
-          continue;
-        }
+        // allow self-hit after grace
+        if (bullet._shooter === player && bulletAgeMs < selfGraceMs) continue;
 
         if (bullet.overlaps(player.sprite)) {
           const calcDamage = calculateDamage(bullet, p);
@@ -536,34 +500,31 @@ const sketch = (p) => {
       }
 
       if (!hitTarget && gameState.bot) {
-        if (bullet._shooter === gameState.bot) {
-          continue;
-        }
-
-        if (bullet.overlaps(gameState.bot.sprite)) {
+        // allow self-hit after grace
+        if (bullet._shooter === gameState.bot && bulletAgeMs < selfGraceMs) {
+          // skip
+        } else if (bullet.overlaps(gameState.bot.sprite)) {
           const calcDamage = calculateDamage(bullet, p);
           gameState.bot.playerHit(bullet, calcDamage);
           hitTarget = true;
         }
       }
 
-      if (hitTarget && bullet.remove) {
-        bullet.remove();
-      }
+      if (hitTarget && bullet.remove) bullet.remove();
     }
 
     // Handle laser path burning damage
     for (let i = 0; i < gameState.bullet.length; i++) {
       const bullet = gameState.bullet[i];
-      if (
-        bullet._isLaser &&
-        bullet._pathPoints &&
-        bullet._pathPoints.length > 0
-      ) {
+      if (bullet._isLaser && bullet._pathPoints && bullet._pathPoints.length > 0) {
+        // Grace time so the shooter doesn't instantly burn themselves on spawn
+        if (bullet._spawnMs == null) bullet._spawnMs = p.millis();
+        const bulletAgeMs = p.millis() - bullet._spawnMs;
+        const selfGraceMs = 120;
+
         for (let pathPoint of bullet._pathPoints) {
           for (let player of gameState.players) {
-            if (bullet._shooter === player) continue;
-
+            if (bullet._shooter === player && bulletAgeMs < selfGraceMs) continue;
             const dist = p.dist(
               pathPoint.x,
               pathPoint.y,
@@ -598,26 +559,6 @@ const sketch = (p) => {
     if (gameState.gameMode === 1 && p.kb.presses("m")) {
       gameState.players[1].shoot();
     }
-
-    // Display health bars
-    const healthBarData = [];
-    for (let i = 0; i < gameState.players.length; i++) {
-      healthBarData.push({
-        health: gameState.players[i].health,
-        name: `Player ${i + 1}`,
-        points: getPointsForPlayerIndex(i),
-      });
-    }
-
-    if (gameState.bot) {
-      healthBarData.push({
-        health: gameState.bot.health,
-        name: "Bot",
-        points: getBotPoints(),
-      });
-    }
-
-    HealthBar(p, healthBarData, WIDTH);
 
     const roundOutcome = getRoundOutcome();
     if (roundOutcome) {
