@@ -26,8 +26,8 @@ export class Tank {
     this.health = 100;
     this.shootCooldown = character?.shootCooldown || 500;
     this.controls = controls;
-    this.baseSpeed = character?.baseSpeed || 8;
-    this.moveSpeed = (character?.baseSpeed || 8) * 0.75;
+    this.baseSpeed = character?.baseSpeed || 5;
+    this.moveSpeed = (character?.baseSpeed || 5) * 0.75;
     this.rotationSpeed = 5;
     this.lastShotTime = 0;
 
@@ -61,16 +61,25 @@ export class Tank {
     this._intendedVx = 0;
     this._intendedVy = 0;
     this._moveDir = 0;
+
+    // Burning effect state
+    this.burningEndTime = null;
+    this.lastBurnDamageTime = null;
+    this.burningDamagePerTick = 0.3; // Minimal damage per tick
   }
 
   update() {
     this.updateEffects();
 
-    if (this.p.kb.pressing(this.controls.left)) {
-      this.sprite.rotation -= this.rotationSpeed;
-    }
-    if (this.p.kb.pressing(this.controls.right)) {
-      this.sprite.rotation += this.rotationSpeed;
+    const isFrozen = this.activeEffects.some(effect => effect.type === "speed" && effect.value === 0);
+
+    if (!isFrozen) {
+      if (this.p.kb.pressing(this.controls.left)) {
+        this.sprite.rotation -= this.rotationSpeed;
+      }
+      if (this.p.kb.pressing(this.controls.right)) {
+        this.sprite.rotation += this.rotationSpeed;
+      }
     }
 
     const movingForward = this.p.kb.pressing(this.controls.forward);
@@ -115,33 +124,6 @@ export class Tank {
     }
   }
 
-  // Must be called at the END of p.draw(), after p5play physics resolves
-  postUpdate() {
-    if (this._moveDir === 0) return;
-
-    const intendedSpeed = Math.sqrt(
-      this._intendedVx * this._intendedVx + this._intendedVy * this._intendedVy,
-    );
-    if (intendedSpeed === 0) return;
-
-    const nx = this._intendedVx / intendedSpeed;
-    const ny = this._intendedVy / intendedSpeed;
-
-    // How much of our intended velocity survived physics?
-    const actualProjected = this.sprite.vel.x * nx + this.sprite.vel.y * ny;
-
-    if (actualProjected < intendedSpeed * 0.3) {
-      // Wall ate our velocity — mark as blocked
-      this._blocked = true;
-      this._lastBlockedNx = nx;
-      this._lastBlockedNy = ny;
-      this.sprite.vel.x = 0;
-      this.sprite.vel.y = 0;
-    } else {
-      this._blocked = false;
-    }
-  }
-
   updateEffects() {
     const currentTime = this.p.millis();
     this.activeEffects = this.activeEffects.filter((effect) => {
@@ -151,6 +133,18 @@ export class Tank {
       }
       return true;
     });
+
+    // Apply burning damage
+    if (this.burningEndTime && currentTime < this.burningEndTime) {
+      if (!this.lastBurnDamageTime || currentTime - this.lastBurnDamageTime >= 100) {
+        this.health -= this.burningDamagePerTick;
+        this.lastBurnDamageTime = currentTime;
+        console.log(`Burning damage: ${this.burningDamagePerTick} HP`);
+      }
+    } else if (this.burningEndTime && currentTime >= this.burningEndTime) {
+      this.burningEndTime = null;
+      this.lastBurnDamageTime = null;
+    }
 
     this.speedMultiplier = 1;
     this.damageMultiplier = 1;
@@ -190,6 +184,21 @@ export class Tank {
       value: multiplier,
       endTime: this.p.millis() + duration,
     });
+  }
+
+  applyFreeze(duration) {
+    console.log(`Applying freeze for ${duration}ms`);
+    this.activeEffects.push({
+      type: "speed",
+      value: 0,
+      endTime: this.p.millis() + duration,
+    });
+  }
+
+  applyBurning(duration) {
+    console.log(`Applying burning effect for ${duration}ms`);
+    this.burningEndTime = this.p.millis() + duration;
+    this.lastBurnDamageTime = this.p.millis();
   }
 
   heal(amount) {
@@ -235,6 +244,7 @@ export class Tank {
     bullet._startX = x;
     bullet._startY = y;
     bullet._damage = this.baseDamage * this.damageMultiplier;
+    bullet._shooter = this;
 
     console.log(
       `${this.bulletType} bullet | dmg: ${bullet._damage} | spd: ${bullet.speed} | life: ${bullet.life}`,

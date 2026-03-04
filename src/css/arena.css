@@ -1,0 +1,221 @@
+/* arena.css (UPDATED) */
+
+/* ================= RESET ================= */
+* {
+  margin: 0; /* IMPORTANT: remove 0 auto (it was breaking spacing) */
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* ================= BODY / ARENA BACKGROUND ================= */
+body {
+  height: 100dvh;
+  width: 100%;
+  overflow-y: hidden;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  /* UNCHANGED: your blue background */
+  background: radial-gradient(
+    circle at center,
+    #6fa0ff 0%,
+    #4b6fe3 40%,
+    #2c47b8 70%,
+    #141f7a 100%
+  );
+
+  position: relative;
+  overflow: hidden;
+}
+
+/* ================= GRID OVERLAY ================= */
+body::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+
+  background:
+    repeating-linear-gradient(
+      0deg,
+      rgba(255, 255, 255, 0.15),
+      rgba(255, 255, 255, 0.15) 1px,
+      transparent 1px,
+      transparent 48px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.15),
+      rgba(255, 255, 255, 0.15) 1px,
+      transparent 1px,
+      transparent 48px
+    );
+
+  opacity: 0.45;
+  z-index: 0;
+}
+
+/* ================= LAYOUT ================= */
+.arena-shell {
+  position: relative;
+  z-index: 1;
+
+  /* evenly spaced like reference */
+  display: grid;
+  grid-template-columns: 240px 1fr 240px;
+  gap: 0;
+  align-items: stretch;
+
+  /* keep whole thing centered and bounded */
+  width: min(1600px, calc(100vw - 48px));
+  max-height: calc(100dvh - 48px);
+}
+
+/* ================= HUD PANELS ================= */
+.hud {
+  background: #e8e8e8;
+  padding: 32px 18px;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+
+  /* pixel-ish frame */
+  border-top: 12px solid #4a4a4a;
+  border-bottom: 12px solid #4a4a4a;
+}
+
+.hud-left {
+  border-left: 12px solid #4a4a4a;
+  border-right: 12px solid #4a4a4a; /* separator */
+}
+
+.hud-right {
+  border-left: 12px solid #4a4a4a; /* separator */
+  border-right: 12px solid #4a4a4a;
+}
+
+.hud-title {
+  color: #ffffff;
+  font-weight: 900;
+  font-size: 20px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.35);
+}
+
+.hud-bar {
+  width: 200px;
+  height: 22px;
+  background: #ffffff;
+  border: 4px solid #000;
+  overflow: hidden;
+}
+
+.hud-bar-fill {
+  width: 100%;
+  height: 100%;
+  background: #ff0000;
+  transition: width 80ms linear; /* makes it feel responsive */
+}
+
+/* optional “life circles” look */
+.hud-lives {
+  display: grid;
+  grid-template-columns: repeat(3, 44px);
+  gap: 18px 18px;
+  margin-top: 12px;
+}
+.life {
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  border: 3px solid rgba(0, 0, 0, 0.45);
+  background: transparent;
+}
+
+/* ================= CENTER COLUMN ================= */
+.arena-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* timer matches arena width */
+.top-timer {
+  width: 100%;
+  max-width: 100%;
+  height: 74px;
+
+  background: #ffe600;
+
+  border-top: 12px solid #4a4a4a;
+  border-left: 12px solid #4a4a4a;
+  border-right: 12px solid #4a4a4a;
+  border-bottom: 0;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  font-size: 28px;
+  font-weight: 900;
+  letter-spacing: 3px;
+  color: #333;
+
+  /* keep text on one line */
+  white-space: nowrap;
+}
+
+/* ================= MAIN ARENA BOX ================= */
+/* bigger + responsive, but keeps the SAME internal canvas size (1400x900) */
+#main-box {
+  width: 100%;
+  height: auto;
+
+  /* IMPORTANT: lock aspect ratio to your internal canvas */
+  aspect-ratio: 1400 / 900;
+
+  /* cap height so it fits viewport */
+  max-height: calc(100dvh - 160px);
+
+  background-color: #dcdcdc;
+
+  border-left: 12px solid #4a4a4a;
+  border-right: 12px solid #4a4a4a;
+  border-bottom: 12px solid #4a4a4a;
+  border-top: 0;
+
+  position: relative;
+  overflow: hidden;
+}
+
+/* make canvas fill the arena box (scales visually, internal stays 1400x900) */
+#main-box canvas {
+  position: absolute;
+  inset: 0;
+  width: 100% !important;
+  height: 100% !important;
+  display: block;
+}
+
+/* ================= PAGE FADE ================= */
+.page-fade {
+  position: fixed;
+  inset: 0;
+  background: #000;
+  opacity: 1;
+  pointer-events: none;
+  z-index: 9999;
+  transition: opacity 280ms ease-out;
+}
+
+body.is-fading-out .page-fade {
+  opacity: 1;
+}
+body.is-fading-in .page-fade {
+  opacity: 0;
+}

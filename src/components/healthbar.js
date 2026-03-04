@@ -1,82 +1,45 @@
-let countdownStartMs = null;
-let countdownSeconds = null;
+// ./src/components/healthbar.js (FULL UPDATED)
 
-const getCountdownSeconds = () => {
-  if (countdownSeconds !== null) return countdownSeconds;
-
-  const storedTime = sessionStorage.getItem("time");
-  let parsed = Number.parseInt(storedTime, 10);
-  if (!Number.isFinite(parsed) || parsed <= 0) {
-    const configRaw = sessionStorage.getItem("gameConfig");
-    if (configRaw) {
-      try {
-        const config = JSON.parse(configRaw);
-        parsed = Number.parseInt(config?.time, 10);
-      } catch {
-        parsed = 0;
-      }
-    }
-  }
-  countdownSeconds = Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
-  return countdownSeconds;
+const clampPct = (value01) => {
+  const v = Number(value01);
+  if (!Number.isFinite(v)) return 0;
+  return Math.max(0, Math.min(1, v)) * 100;
 };
 
 const formatCountdown = (seconds) => {
-  const safeSeconds = Math.max(0, seconds);
+  const safeSeconds = Math.max(0, Math.floor(seconds));
   const minutes = Math.floor(safeSeconds / 60);
   const remaining = safeSeconds % 60;
   const padded = ("0" + remaining).slice(-2);
   return `${minutes}:${padded}`;
 };
 
-export const HealthBar = (p, players, width) => {
-  if (countdownStartMs === null) countdownStartMs = p.millis();
-  const initialSeconds = getCountdownSeconds();
-  const elapsedSeconds = Math.floor((p.millis() - countdownStartMs) / 1000);
-  const remainingSeconds = Math.max(0, initialSeconds - elapsedSeconds);
-
-  const barW = 200;
-  const barH = 20;
-  const barY = 30;
-  const spacing = 30;
-  const n = players.length;
-  if (n === 0) return;
-
-  p.push();
-  p.fill(0);
-  p.textSize(18);
-  p.textAlign(p.CENTER, p.CENTER);
-  p.text(`Time ${formatCountdown(remainingSeconds)}`, width / 2, barY - 10);
-  p.pop();
-
-  for (let i = 0; i < n; i++) {
-    let x;
-    let align;
-    if (i === 0) {
-      x = 40;
-      align = p.LEFT;
-    } else if (i === 1) {
-      x = width - barW - 40;
-      align = p.RIGHT;
-    } else {
-      x = 40;
-      align = p.LEFT;
-    }
-
-    let y = barY + (i < 2 ? 0 : (barH + spacing) * (i - 1));
-    p.push();
-    p.fill(200, 0, 0);
-    p.rect(x, y, barW, barH, 5);
-    p.fill(0, 200, 0);
-    p.rect(x, y, (barW * Math.max(players[i].health, 0)) / 100, barH, 5);
-    p.fill(0);
-    p.textSize(16);
-    p.textAlign(align, p.CENTER);
-    p.text(
-      players[i].name || `Player ${i + 1}`,
-      align === p.LEFT ? x : x + barW,
-      y - 10,
-    );
-    p.pop();
+export function updateHud({ mode, players, bot, remainingSeconds }) {
+  const timerEl = document.getElementById("matchTimerText");
+  if (timerEl) {
+    timerEl.textContent = `TIME REMAINING : ${formatCountdown(remainingSeconds)}`;
   }
-};
+
+  const p1NameEl = document.getElementById("p1Name");
+  const p2NameEl = document.getElementById("p2Name");
+
+  const p1Fill = document.getElementById("p1HpFill");
+  const p2Fill = document.getElementById("p2HpFill");
+
+  const p1 = players?.[0] ?? null;
+  const p2 = players?.[1] ?? null;
+
+  if (p1NameEl) p1NameEl.textContent = mode === 2 ? "PLAYER" : "PLAYER 1";
+  if (p1Fill) p1Fill.style.width = `${clampPct((p1?.health ?? 0) / 100)}%`;
+
+  if (mode === 1) {
+    if (p2NameEl) p2NameEl.textContent = "PLAYER 2";
+    if (p2Fill) p2Fill.style.width = `${clampPct((p2?.health ?? 0) / 100)}%`;
+  } else if (mode === 2) {
+    if (p2NameEl) p2NameEl.textContent = "BOT";
+    if (p2Fill) p2Fill.style.width = `${clampPct((bot?.health ?? 0) / 100)}%`;
+  } else {
+    if (p2NameEl) p2NameEl.textContent = "PLAYER 2";
+    if (p2Fill) p2Fill.style.width = `${clampPct((p2?.health ?? 0) / 100)}%`;
+  }
+}

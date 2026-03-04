@@ -2,7 +2,7 @@ export const tankCharacters = [
     {
         name: 'Tank Alpha',
         image: '../assets/characters/alpha/Tank-Alpha.png',
-        baseSpeed: 9,
+        baseSpeed: 5,
         shootCooldown: 450,
         baseDamage: 20,
         bulletSpeed: 16,
@@ -28,7 +28,7 @@ export const tankCharacters = [
     {
         name: 'Tank Cobra',
         image: '../assets/characters/cobra/Tank-Cobra.png',
-        baseSpeed: 12,
+        baseSpeed: 5,
         shootCooldown: 300,
         baseDamage: 20,
         bulletSpeed: 12,
@@ -41,8 +41,8 @@ export const tankCharacters = [
     {
         name: 'Tank Delta',
         image: '../assets/characters/delta/Tank-Delta.png',
-        baseSpeed: 8,
-        shootCooldown: 200,
+        baseSpeed: 5,
+        shootCooldown: 1000,
         baseDamage: 18,
         bulletSpeed: 14,
         bulletDiameter: 7,
@@ -54,11 +54,12 @@ export const tankCharacters = [
 ];
 
 export const orbTypes = [
-    { name: 'speed', image: '../assets/orbs/speed-ver2.png' },
-    { name: 'damage', image: '../assets/orbs/damage-ver2.png' },
-    { name: 'health', image: '../assets/orbs/health-ver2.png' },
-    { name: 'rapid', image: '../assets/orbs/rapid-ver2.png' },
-    { name: 'slow', image: '../assets/orbs/slow-ver2.png' }
+    { name: 'speed', image: '../assets/orbs/speed.png' },
+    { name: 'damage', image: '../assets/orbs/damage.png' },
+    { name: 'health', image: '../assets/orbs/health.png' },
+    { name: 'rapid', image: '../assets/orbs/rapid.png' },
+    { name: 'slow', image: '../assets/orbs/slow.png' },
+    { name: 'freeze', image: '../assets/orbs/freeze.png' }
 ]
 
 export const mazeLayout = [
@@ -244,9 +245,3 @@ export const HEALTHBARHEIGHT = 75;
 export const TILEW = 36;
 export const TILEH = 40;
 export const OFFSETY = HEALTHBARHEIGHT + 70;
-
-
-
-
-
-

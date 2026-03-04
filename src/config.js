@@ -114,51 +114,24 @@ export const renderArenaConfig = (p, config, map, mode, bullet) => {
       player1Character,
     );
 
+    const botDifficulty = config?.difficulty || "hard";
+
+    // Randomly select a tank for the bot
+    const randomTank = tankCharacters[Math.floor(Math.random() * tankCharacters.length)];
+    const botImage = randomTank.image;
+    const botCharacter = randomTank;
+
     const bot = new BotTank(
       p,
       WIDTH / 2 + 150,
       HEIGHT / 2 + 150,
-      player2Image,
+      botImage,
       bullet,
-      "normal",
-      player2Character,
+      botDifficulty,
+      botCharacter,
     );
 
     return { player, bot };
-  };
-
-  const coop = () => {
-    const player1 = new Tank(
-      p,
-      WIDTH / 2,
-      HEIGHT / 2,
-      player1Image,
-      {
-        forward: "w",
-        backward: "s",
-        left: "a",
-        right: "d",
-      },
-      bullet,
-      player1Character,
-    );
-
-    const player2 = new Tank(
-      p,
-      WIDTH / 2 + 150,
-      HEIGHT / 2,
-      player2Image,
-      {
-        forward: "arrowup",
-        backward: "arrowdown",
-        left: "arrowleft",
-        right: "arrowright",
-      },
-      bullet,
-      player2Character,
-    );
-
-    return { player1, player2 };
   };
 
   const mapSelected = () => {
@@ -190,8 +163,6 @@ export const renderArenaConfig = (p, config, map, mode, bullet) => {
         return twoPlayer();
       case 2:
         return vsBot();
-      case 3:
-        return coop();
       default:
         return twoPlayer();
     }
