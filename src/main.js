@@ -106,17 +106,33 @@ const sketch = (p) => {
     }
   }
 
+  function freezeAllSprites() {
+    const allTanks = [...gameState.players];
+    if (gameState.bot) allTanks.push(gameState.bot);
+    for (const tank of allTanks) {
+      if (!tank?.sprite) continue;
+      tank.sprite.vel.x = 0;
+      tank.sprite.vel.y = 0;
+      tank.sprite.speed = 0;
+      tank.sprite.collider = "static";
+    }
+    // Bullets keep moving intentionally
+  }
+
   function resetTank(tank, x, y) {
     if (!tank || !tank.sprite) return;
-    tank.health = 100;
+    tank.health = tank.maxHealth || 100;
     tank.activeEffects = [];
     tank.speedMultiplier = 1;
     tank.damageMultiplier = 1;
     tank.cooldownMultiplier = 1;
     tank.updateEffects();
 
+    tank.sprite.collider = "dynamic";
     tank.sprite.x = x;
     tank.sprite.y = y;
+    tank.sprite.vel.x = 0;
+    tank.sprite.vel.y = 0;
     tank.sprite.speed = 0;
     tank.sprite.rotation = 0;
   }
@@ -141,6 +157,12 @@ const sketch = (p) => {
     bot.lastHistoryTime = 0;
     bot.nearbyOrbs = [];
     bot.target = null;
+    // Clear nav cache so stale paths don't carry across rounds/maps
+    bot._navPath        = null;
+    bot._navDest        = null;
+    bot._navLastCompute = 0;
+    bot._fleeTarget     = null;
+    bot._fleeTargetTime = 0;
   }
 
   function clearBullets() {
@@ -199,6 +221,7 @@ const sketch = (p) => {
     roundMessage = outcome.message;
     roundResetAt = p.millis() + 1500;
     awardWin(outcome.winnerKey);
+    freezeAllSprites();
   }
 
   function getMatchDurationSeconds() {
@@ -260,6 +283,11 @@ const sketch = (p) => {
 
     if (gameState.bot) resetBotState(gameState.bot);
 
+    // Re-supply the new map to the bot's tile-based LOS system
+    if (gameState.bot && gameState.bot.setMazeData) {
+      gameState.bot.setMazeData(selectedMap, TILEW, TILEH, OFFSETY);
+    }
+
     gameState.orbs = renderOrbSpawn(p, selectedMap, orbTypes);
   }
 
@@ -307,6 +335,10 @@ const sketch = (p) => {
     if (gameState.bot && gameState.bot.setWallGroups) {
       gameState.bot.setWallGroups([hWalls, vWalls, borderWalls]);
     }
+    if (gameState.bot && gameState.bot.setMazeData) {
+      const _activeMap = mazeLayout[currentMapIndex] || mazeLayout[0];
+      gameState.bot.setMazeData(_activeMap, TILEW, TILEH, OFFSETY);
+    }
 
     gameState.matchDurationSeconds = getMatchDurationSeconds();
     gameState.matchStartMs = p.millis();
@@ -348,6 +380,81 @@ const sketch = (p) => {
     });
 
     if (gameState.matchOver) {
+      // Draw end screen directly on the p5 canvas
+      p.push();
+      p.fill(0, 0, 0, 180);
+      p.noStroke();
+      p.rect(0, 0, WIDTH, HEIGHT);
+
+      // Title
+      p.fill(255, 230, 0);
+      p.textSize(48);
+      p.textAlign(p.CENTER, p.CENTER);
+      p.textStyle(p.BOLD);
+      p.text("GAME OVER", WIDTH / 2, HEIGHT / 2 - 160);
+
+      // Winner message
+      const winMsg = getMatchWinnerMessage();
+      p.fill(255);
+      p.textSize(26);
+      p.textStyle(p.NORMAL);
+      p.text(winMsg.toUpperCase(), WIDTH / 2, HEIGHT / 2 - 90);
+
+      // Score display
+      const scoreBoxW = 340;
+      const scoreBoxH = 130;
+      const scoreBoxX = WIDTH / 2 - scoreBoxW / 2;
+      const scoreBoxY = HEIGHT / 2 - 50;
+
+      p.fill(30, 30, 60, 220);
+      p.stroke(255, 230, 0);
+      p.strokeWeight(3);
+      p.rect(scoreBoxX, scoreBoxY, scoreBoxW, scoreBoxH, 8);
+      p.noStroke();
+
+      p.textSize(15);
+      p.fill(200, 200, 255);
+      p.text("FINAL SCORE", WIDTH / 2, scoreBoxY + 28);
+
+      p.textSize(22);
+      p.fill(255);
+      if (gameState.gameMode === 1) {
+        p.text(
+          `P1  ${gameState.score.player1}  :  ${gameState.score.player2}  P2`,
+          WIDTH / 2, scoreBoxY + 75
+        );
+      } else if (gameState.gameMode === 2) {
+        p.text(
+          `PLAYER  ${gameState.score.player}  :  ${gameState.score.bot}  BOT`,
+          WIDTH / 2, scoreBoxY + 75
+        );
+      } else {
+        p.text(
+          `PLAYERS  ${gameState.score.player1 + gameState.score.player2}  :  ${gameState.score.bot}  BOT`,
+          WIDTH / 2, scoreBoxY + 75
+        );
+      }
+
+      // Instruction buttons hint
+      p.textSize(14);
+      p.fill(200, 255, 200);
+      p.text("[ R ]  REMATCH       [ ESC ]  MAIN MENU", WIDTH / 2, HEIGHT / 2 + 120);
+
+      p.pop();
+
+      // Keyboard controls for end screen
+      if (p.kb.presses("r")) {
+        // Full rematch — reset scores and restart
+        gameState.score = { player1: 0, player2: 0, player: 0, bot: 0 };
+        gameState.matchStartMs = p.millis();
+        gameState.matchOver = false;
+        roundOver = false;
+        resetRound();
+      }
+      if (p.kb.presses("escape")) {
+        sessionStorage.removeItem("gameConfig");
+        window.location.href = "index.html";
+      }
       return;
     }
 
@@ -514,39 +621,48 @@ const sketch = (p) => {
     }
 
     // Handle laser path burning damage
+    // Checks every point in the trail so touching the path deals damage.
+    // Throttled per-bullet to once every 100ms to avoid per-frame damage spam.
+    const _laserBurnDamage = 2;        // HP per tick
+    const _laserBurnInterval = 100;    // ms between ticks
+    const _laserBurnRadius = 14;       // px contact radius along path
+    const _selfGraceMs = 120;
+
     for (let i = 0; i < gameState.bullet.length; i++) {
       const bullet = gameState.bullet[i];
-      if (bullet._isLaser && bullet._pathPoints && bullet._pathPoints.length > 0) {
-        // Grace time so the shooter doesn't instantly burn themselves on spawn
-        if (bullet._spawnMs == null) bullet._spawnMs = p.millis();
-        const bulletAgeMs = p.millis() - bullet._spawnMs;
-        const selfGraceMs = 120;
+      if (!bullet._isLaser || !bullet._pathPoints || bullet._pathPoints.length === 0) continue;
 
-        for (let pathPoint of bullet._pathPoints) {
-          for (let player of gameState.players) {
-            if (bullet._shooter === player && bulletAgeMs < selfGraceMs) continue;
-            const dist = p.dist(
-              pathPoint.x,
-              pathPoint.y,
-              player.sprite.x,
-              player.sprite.y,
-            );
-            if (dist < player.sprite.diameter / 2 + 10) {
-              player.health -= 0.05;
-            }
-          }
+      if (bullet._spawnMs == null) bullet._spawnMs = p.millis();
+      const bulletAgeMs = p.millis() - bullet._spawnMs;
 
-          if (gameState.bot && bullet._shooter !== gameState.bot) {
-            const dist = p.dist(
-              pathPoint.x,
-              pathPoint.y,
-              gameState.bot.sprite.x,
-              gameState.bot.sprite.y,
-            );
-            if (dist < gameState.bot.sprite.diameter / 2 + 10) {
-              gameState.bot.health -= 0.05;
-            }
-          }
+      // Throttle per bullet
+      if (bullet._lastBurnTick == null) bullet._lastBurnTick = 0;
+      if (p.millis() - bullet._lastBurnTick < _laserBurnInterval) continue;
+      bullet._lastBurnTick = p.millis();
+
+      // Check every path point against every target once per tick
+      for (const player of gameState.players) {
+        if (bullet._shooter === player && bulletAgeMs < _selfGraceMs) continue;
+        let touching = false;
+        for (const pt of bullet._pathPoints) {
+          const d = p.dist(pt.x, pt.y, player.sprite.x, player.sprite.y);
+          if (d < player.sprite.diameter / 2 + _laserBurnRadius) { touching = true; break; }
+        }
+        if (touching) {
+          player.health -= _laserBurnDamage;
+          if (player.health < 0) player.health = 0;
+        }
+      }
+
+      if (gameState.bot && bullet._shooter !== gameState.bot) {
+        let touching = false;
+        for (const pt of bullet._pathPoints) {
+          const d = p.dist(pt.x, pt.y, gameState.bot.sprite.x, gameState.bot.sprite.y);
+          if (d < gameState.bot.sprite.diameter / 2 + _laserBurnRadius) { touching = true; break; }
+        }
+        if (touching) {
+          gameState.bot.health -= _laserBurnDamage;
+          if (gameState.bot.health < 0) gameState.bot.health = 0;
         }
       }
     }

@@ -1,6 +1,9 @@
 import { Tank } from "./tank.js";
 import { HEIGHT, WIDTH, HEALTHBARHEIGHT } from "../interface.js";
 
+const DEBUG = false;
+const log = (...args) => DEBUG && console.log(...args);
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Angle convention used throughout this file:
 //
@@ -105,7 +108,7 @@ export class BotTank extends Tank {
         this.preferredDist = 200;
         break;
     }
-    console.log(`Bot difficulty: ${this.difficulty}`);
+    log(`Bot difficulty: ${this.difficulty}`);
   }
 
   // ── Main update ────────────────────────────────────────────────────────────
@@ -120,10 +123,69 @@ export class BotTank extends Tank {
     this.act();
   }
 
-  // ── Line of sight ──────────────────────────────────────────────────────────
+  // ── Line of sight — tile-based DDA raycast ────────────────────────────────
+  //
+  // Marches along the ray one tile-cell at a time using the same mazeLayout
+  // grid that the actual walls are built from. This is both faster and more
+  // accurate than sampling N points and AABB-testing every wall sprite.
+  //
+  // Wall characters: '-' horizontal wall, '/' vertical wall
+  // Open characters: '.' open floor, ' ' open space
+  // Any other character is treated as solid.
 
   hasLOS(x1, y1, x2, y2) {
-    const STEPS = 16;
+    // Fall back to the old sprite-AABB method when no maze data is set
+    if (!this.mazeLayout || !this.tileW || !this.tileH) {
+      return this._hasLOS_fallback(x1, y1, x2, y2);
+    }
+
+    const layout   = this.mazeLayout;
+    const tileW    = this.tileW;
+    const tileH    = this.tileH;
+    const offsetY  = this.offsetY;
+    const rows     = layout.length;
+    const cols     = layout[0].length;
+
+    // Convert world coords to tile-grid coords
+    const toCol = (wx) => (wx) / tileW;
+    const toRow = (wy) => (wy - offsetY) / tileH;
+
+    const isSolid = (col, row) => {
+      const r = Math.floor(row);
+      const c = Math.floor(col);
+      if (r < 0 || r >= rows || c < 0 || c >= cols) return true; // out of bounds = solid
+      const ch = layout[r][c];
+      // Open cells
+      if (ch === "." || ch === " ") return false;
+      // Wall cells
+      return true;
+    };
+
+    // DDA march
+    let cx = toCol(x1);
+    let cy = toRow(y1);
+    const ex = toCol(x2);
+    const ey = toRow(y2);
+
+    const dx = ex - cx;
+    const dy = ey - cy;
+    const steps = Math.max(Math.abs(dx), Math.abs(dy)) * 4; // 4 samples per tile
+    if (steps < 1) return true;
+
+    const sx = dx / steps;
+    const sy = dy / steps;
+
+    for (let i = 1; i < steps; i++) {
+      cx += sx;
+      cy += sy;
+      if (isSolid(cx, cy)) return false;
+    }
+    return true;
+  }
+
+  // Legacy fallback (used when mazeLayout not yet set)
+  _hasLOS_fallback(x1, y1, x2, y2) {
+    const STEPS = 32;
     const dx = x2 - x1;
     const dy = y2 - y1;
     for (let i = 1; i < STEPS; i++) {
@@ -265,12 +327,24 @@ export class BotTank extends Tank {
       }
 
       case "flee": {
+        // Pick a flee waypoint on the opposite side of the map from the enemy,
+        // then navigate there wall-aware rather than just backing into a corner.
         if (this.target) {
-          const away = this._angleToPoint(this.target.sprite.x, this.target.sprite.y) + 180;
-          this._rotateTo(away);
+          if (!this._fleeTarget || this.p.millis() - (this._fleeTargetTime || 0) > 1500) {
+            const awayAngle = this._angleToPoint(
+              this.target.sprite.x, this.target.sprite.y
+            ) + 180;
+            const awayRad = (awayAngle - 90) * (Math.PI / 180);
+            const fleeDist = 350;
+            this._fleeTarget = {
+              x: Math.max(60, Math.min(WIDTH  - 60, this.sprite.x + Math.cos(awayRad) * fleeDist)),
+              y: Math.max(HEALTHBARHEIGHT + 130, Math.min(HEIGHT - 60, this.sprite.y + Math.sin(awayRad) * fleeDist)),
+            };
+            this._fleeTargetTime = this.p.millis();
+            this._navPath = null; // force path recompute
+          }
+          this._navigateTo(this._fleeTarget.x, this._fleeTarget.y, 1.1);
         }
-        this.sprite.direction = this.sprite.rotation - 90;
-        this.sprite.speed     = this.moveSpeed * 1.1;
         break;
       }
 
@@ -281,16 +355,8 @@ export class BotTank extends Tank {
           : this.nearbyOrbs.find(o => o.isGood);
 
         if (targetOrb) {
-          // Steer away from bad orbs that are directly in the path
-          const badInPath = this.nearbyOrbs.find(o => o.isBad && o.dist < 90);
-          if (badInPath) {
-            const away = this._angleToPoint(badInPath.orb.sprite.x, badInPath.orb.sprite.y) + 180;
-            this._rotateTo(away);
-          } else {
-            this._rotateTo(this._angleToPoint(targetOrb.orb.sprite.x, targetOrb.orb.sprite.y));
-          }
-          this.sprite.direction = this.sprite.rotation - 90;
-          this.sprite.speed     = this.moveSpeed * 1.1;
+          // Use wall-aware navigation toward the orb
+          this._navigateTo(targetOrb.orb.sprite.x, targetOrb.orb.sprite.y, 1.1);
           // Still shoot at target while rushing power orbs (not while fleeing for health)
           if (this.health >= 55) this.tryShoot();
         } else {
@@ -301,15 +367,18 @@ export class BotTank extends Tank {
 
       case "search": {
         if (this.lastSeenPos) {
-          this._rotateTo(this._angleToPoint(this.lastSeenPos.x, this.lastSeenPos.y));
           const d = this.p.dist(
             this.sprite.x, this.sprite.y,
             this.lastSeenPos.x, this.lastSeenPos.y,
           );
-          if (d < 60) this.lastSeenPos = null;
+          if (d < 60) {
+            this.lastSeenPos = null;
+          } else {
+            this._navigateTo(this.lastSeenPos.x, this.lastSeenPos.y, 0.7);
+          }
+        } else {
+          this.sprite.speed = 0;
         }
-        this.sprite.direction = this.sprite.rotation - 90;
-        this.sprite.speed     = this.moveSpeed * 0.7;
         break;
       }
 
@@ -318,6 +387,123 @@ export class BotTank extends Tank {
         this._doPatrol();
         break;
     }
+  }
+
+  // ── BFS Pathfinder ────────────────────────────────────────────────────────
+  //
+  // Finds a walkable path through the tile grid from (x1,y1) to (x2,y2).
+  // Returns an array of world-space waypoints [{x,y},...] the bot should
+  // steer through, or null if no maze data is available (falls back to direct).
+  //
+  // Only '.' and ' ' tiles are walkable. The BFS explores 4-directionally
+  // and returns the smoothed centre-of-tile waypoints.
+
+  _findPath(x1, y1, x2, y2) {
+    if (!this.mazeLayout || !this.tileW || !this.tileH) return null;
+
+    const layout  = this.mazeLayout;
+    const tW      = this.tileW;
+    const tH      = this.tileH;
+    const offY    = this.offsetY;
+    const rows    = layout.length;
+    const cols    = layout[0].length;
+
+    const toCol = (wx) => Math.floor(wx / tW);
+    const toRow = (wy) => Math.floor((wy - offY) / tH);
+    const toWorld = (col, row) => ({
+      x: col * tW + tW / 2,
+      y: row * tH + tH / 2 + offY,
+    });
+
+    const isWalkable = (col, row) => {
+      if (row < 0 || row >= rows || col < 0 || col >= cols) return false;
+      const ch = layout[row][col];
+      return ch === "." || ch === " ";
+    };
+
+    const sc = toCol(x1); const sr = toRow(y1);
+    const ec = toCol(x2); const er = toRow(y2);
+
+    // Already in same cell — no path needed
+    if (sc === ec && sr === er) return null;
+
+    // BFS
+    const visited = new Set();
+    const key = (c, r) => `${c},${r}`;
+    const queue = [{ c: sc, r: sr, path: [] }];
+    visited.add(key(sc, sr));
+
+    const DIRS = [[0,-1],[0,1],[-1,0],[1,0]];
+    let found = null;
+
+    while (queue.length > 0) {
+      const { c, r, path } = queue.shift();
+
+      for (const [dc, dr] of DIRS) {
+        const nc = c + dc; const nr = r + dr;
+        const k = key(nc, nr);
+        if (visited.has(k)) continue;
+        if (!isWalkable(nc, nr)) continue;
+        visited.add(k);
+        const newPath = [...path, { c: nc, r: nr }];
+        if (nc === ec && nr === er) { found = newPath; break; }
+        queue.push({ c: nc, r: nr, path: newPath });
+      }
+      if (found) break;
+
+      // Safety cap — avoid BFS hanging on huge open maps
+      if (visited.size > 1200) break;
+    }
+
+    if (!found || found.length === 0) return null;
+
+    // Convert tile path to world waypoints, skip redundant collinear steps
+    const waypoints = [];
+    for (let i = 0; i < found.length; i++) {
+      const wp = toWorld(found[i].c, found[i].r);
+      if (waypoints.length < 2) { waypoints.push(wp); continue; }
+      // Prune middle point if all three are collinear (same col or same row)
+      const prev2 = waypoints[waypoints.length - 2];
+      const prev1 = waypoints[waypoints.length - 1];
+      const sameCol = Math.abs(prev2.x - prev1.x) < 2 && Math.abs(prev1.x - wp.x) < 2;
+      const sameRow = Math.abs(prev2.y - prev1.y) < 2 && Math.abs(prev1.y - wp.y) < 2;
+      if (sameCol || sameRow) waypoints[waypoints.length - 1] = wp;
+      else waypoints.push(wp);
+    }
+    return waypoints;
+  }
+
+  // Navigate toward a world-space destination using BFS waypoints.
+  // Caches the path and advances through waypoints as the bot moves.
+  // Call this instead of _rotateTo(_angleToPoint(dest)) for wall-aware nav.
+  _navigateTo(destX, destY, speedMult = 1.0) {
+    const now = this.p.millis();
+
+    // Recompute path if destination changed significantly or cache expired
+    const destChanged = !this._navDest ||
+      this.p.dist(destX, destY, this._navDest.x, this._navDest.y) > 60;
+    const cacheExpired = now - (this._navLastCompute || 0) > 800;
+
+    if (destChanged || cacheExpired || !this._navPath || this._navPath.length === 0) {
+      this._navDest        = { x: destX, y: destY };
+      this._navLastCompute = now;
+      const path = this._findPath(this.sprite.x, this.sprite.y, destX, destY);
+      // Append the actual destination as the final waypoint
+      this._navPath = path ? [...path, { x: destX, y: destY }] : [{ x: destX, y: destY }];
+    }
+
+    // Advance waypoints once we're close enough
+    while (this._navPath.length > 1) {
+      const wp = this._navPath[0];
+      const d  = this.p.dist(this.sprite.x, this.sprite.y, wp.x, wp.y);
+      if (d < 28) this._navPath.shift();
+      else break;
+    }
+
+    const target = this._navPath[0];
+    this._rotateTo(this._angleToPoint(target.x, target.y));
+    this.sprite.direction = this.sprite.rotation - 90;
+    this.sprite.speed     = this.moveSpeed * speedMult;
   }
 
   // ── Patrol ─────────────────────────────────────────────────────────────────
@@ -334,23 +520,13 @@ export class BotTank extends Tank {
       if (d < 50) this._pickPatrolTarget();
     }
 
-    // Avoid nearby bad orbs
-    const badOrb = this.nearbyOrbs.find(o => o.isBad && o.dist < 150);
-    if (badOrb) {
-      const away = this._angleToPoint(badOrb.orb.sprite.x, badOrb.orb.sprite.y) + 180;
-      this._rotateTo(away);
-    } else {
-      // Collect good orbs on the way, else head to waypoint
-      const goodOrb = this.nearbyOrbs.find(o => o.isGood && o.priority > 30);
-      if (goodOrb) {
-        this._rotateTo(this._angleToPoint(goodOrb.orb.sprite.x, goodOrb.orb.sprite.y));
-      } else if (this.patrolTarget) {
-        this._rotateTo(this._angleToPoint(this.patrolTarget.x, this.patrolTarget.y));
-      }
+    // Collect good orbs on the way if close (navigate to them wall-aware)
+    const goodOrb = this.nearbyOrbs.find(o => o.isGood && o.priority > 30 && o.dist < 200);
+    if (goodOrb) {
+      this._navigateTo(goodOrb.orb.sprite.x, goodOrb.orb.sprite.y, 0.55);
+    } else if (this.patrolTarget) {
+      this._navigateTo(this.patrolTarget.x, this.patrolTarget.y, 0.55);
     }
-
-    this.sprite.direction = this.sprite.rotation - 90;
-    this.sprite.speed     = this.moveSpeed * 0.55;
   }
 
   _pickPatrolTarget() {
@@ -623,7 +799,7 @@ export class BotTank extends Tank {
         combat:"⚔️", retreat:"🔙", flee:"💨",
         search:"🔍", patrol:"🚶", orb_rush:"💊",
       };
-      console.log(
+      log(
         `${icons[this.state] || "?"} ${this.state}` +
         ` HP:${Math.round(this.health)}` +
         (dist != null ? ` d:${Math.round(dist)}` : ""),
@@ -637,10 +813,19 @@ export class BotTank extends Tank {
   setTarget(tank) {
     this.target      = tank;
     this.posHistory  = [];
-    if (tank) console.log("🎯 Target set");
+    if (tank) log("🎯 Target set");
   }
 
   setWallGroups(groups) {
     this.wallGroups = groups;
+  }
+
+  // Supply the active maze layout + tile dimensions so hasLOS can use the
+  // fast tile-based DDA raycast instead of the sprite AABB fallback.
+  setMazeData(layout, tileW, tileH, offsetY) {
+    this.mazeLayout = layout;
+    this.tileW      = tileW;
+    this.tileH      = tileH;
+    this.offsetY    = offsetY;
   }
 }

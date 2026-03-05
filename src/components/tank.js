@@ -1,3 +1,6 @@
+const DEBUG = false;
+const log = (...args) => DEBUG && log(...args);
+
 export class Tank {
   constructor(p, x, y, image, controls, bullet, character) {
     this.p = p;
@@ -23,7 +26,8 @@ export class Tank {
     this.sprite.bounciness = 0;
     this.sprite.mass = 100;
 
-    this.health = 100;
+    this.maxHealth = character?.maxHealth || 100;
+    this.health = this.maxHealth;
     this.shootCooldown = character?.shootCooldown || 500;
     this.controls = controls;
     this.baseSpeed = character?.baseSpeed || 5;
@@ -128,7 +132,7 @@ export class Tank {
     const currentTime = this.p.millis();
     this.activeEffects = this.activeEffects.filter((effect) => {
       if (currentTime >= effect.endTime) {
-        console.log(`Effect ${effect.type} expired`);
+        log(`Effect ${effect.type} expired`);
         return false;
       }
       return true;
@@ -139,7 +143,7 @@ export class Tank {
       if (!this.lastBurnDamageTime || currentTime - this.lastBurnDamageTime >= 100) {
         this.health -= this.burningDamagePerTick;
         this.lastBurnDamageTime = currentTime;
-        console.log(`Burning damage: ${this.burningDamagePerTick} HP`);
+        log(`Burning damage: ${this.burningDamagePerTick} HP`);
       }
     } else if (this.burningEndTime && currentTime >= this.burningEndTime) {
       this.burningEndTime = null;
@@ -160,7 +164,7 @@ export class Tank {
   }
 
   applySpeedBoost(multiplier, duration) {
-    console.log(`Applying speed boost: ${multiplier}x for ${duration}ms`);
+    log(`Applying speed boost: ${multiplier}x for ${duration}ms`);
     this.activeEffects.push({
       type: "speed",
       value: multiplier,
@@ -169,7 +173,7 @@ export class Tank {
   }
 
   applyDamageBoost(multiplier, duration) {
-    console.log(`Applying damage boost: ${multiplier}x for ${duration}ms`);
+    log(`Applying damage boost: ${multiplier}x for ${duration}ms`);
     this.activeEffects.push({
       type: "damage",
       value: multiplier,
@@ -178,7 +182,7 @@ export class Tank {
   }
 
   applyRapidFire(multiplier, duration) {
-    console.log(`Applying rapid fire: ${multiplier}x for ${duration}ms`);
+    log(`Applying rapid fire: ${multiplier}x for ${duration}ms`);
     this.activeEffects.push({
       type: "cooldown",
       value: multiplier,
@@ -187,7 +191,7 @@ export class Tank {
   }
 
   applyFreeze(duration) {
-    console.log(`Applying freeze for ${duration}ms`);
+    log(`Applying freeze for ${duration}ms`);
     this.activeEffects.push({
       type: "speed",
       value: 0,
@@ -196,15 +200,15 @@ export class Tank {
   }
 
   applyBurning(duration) {
-    console.log(`Applying burning effect for ${duration}ms`);
+    log(`Applying burning effect for ${duration}ms`);
     this.burningEndTime = this.p.millis() + duration;
     this.lastBurnDamageTime = this.p.millis();
   }
 
   heal(amount) {
-    console.log(`Healing for ${amount} HP`);
+    log(`Healing for ${amount} HP`);
     this.health += amount;
-    if (this.health > 100) this.health = 100;
+    if (this.health > this.maxHealth) this.health = this.maxHealth;
   }
 
   createBullet() {
@@ -213,10 +217,10 @@ export class Tank {
     const bulletX = this.sprite.x + offset * Math.cos(angleRad);
     const bulletY = this.sprite.y + offset * Math.sin(angleRad);
 
-    console.log(`Creating bullet - Type: ${this.bulletType}`);
+    log(`Creating bullet - Type: ${this.bulletType}`);
 
     if (this.bulletType === "dual") {
-      console.log(`Firing DUAL bullets`);
+      log(`Firing DUAL bullets`);
       const sideOffset = 10;
       const perpAngleRad = this.p.radians(this.sprite.rotation);
       
@@ -246,7 +250,7 @@ export class Tank {
     bullet._damage = this.baseDamage * this.damageMultiplier;
     bullet._shooter = this;
 
-    console.log(
+    log(
       `${this.bulletType} bullet | dmg: ${bullet._damage} | spd: ${bullet.speed} | life: ${bullet.life}`,
     );
     return bullet;
@@ -292,7 +296,7 @@ export class Tank {
     laserBullet._pathPoints = [];
     laserBullet._maxPathLength = 50;
 
-    console.log(
+    log(
       `Laser fired | dmg: ${laserBullet._damage} | spd: ${laserBullet.speed} | life: ${laserBullet.life}`,
     );
   }
@@ -300,7 +304,7 @@ export class Tank {
   playerHit(bullet, damage) {
     if (bullet && bullet.remove) bullet.remove();
     const finalDamage = damage || bullet._damage || 20;
-    console.log(
+    log(
       `Player hit for ${finalDamage} damage. Health: ${this.health} -> ${this.health - finalDamage}`,
     );
     this.health -= finalDamage;

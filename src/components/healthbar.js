@@ -30,16 +30,16 @@ export function updateHud({ mode, players, bot, remainingSeconds }) {
   const p2 = players?.[1] ?? null;
 
   if (p1NameEl) p1NameEl.textContent = mode === 2 ? "PLAYER" : "PLAYER 1";
-  if (p1Fill) p1Fill.style.width = `${clampPct((p1?.health ?? 0) / 100)}%`;
+  if (p1Fill) p1Fill.style.width = `${clampPct((p1?.health ?? 0) / (p1?.maxHealth || 100))}%`;
 
   if (mode === 1) {
     if (p2NameEl) p2NameEl.textContent = "PLAYER 2";
-    if (p2Fill) p2Fill.style.width = `${clampPct((p2?.health ?? 0) / 100)}%`;
+    if (p2Fill) p2Fill.style.width = `${clampPct((p2?.health ?? 0) / (p2?.maxHealth || 100))}%`;
   } else if (mode === 2) {
     if (p2NameEl) p2NameEl.textContent = "BOT";
-    if (p2Fill) p2Fill.style.width = `${clampPct((bot?.health ?? 0) / 100)}%`;
+    if (p2Fill) p2Fill.style.width = `${clampPct((bot?.health ?? 0) / (bot?.maxHealth || 100))}%`;
   } else {
     if (p2NameEl) p2NameEl.textContent = "PLAYER 2";
-    if (p2Fill) p2Fill.style.width = `${clampPct((p2?.health ?? 0) / 100)}%`;
+    if (p2Fill) p2Fill.style.width = `${clampPct((p2?.health ?? 0) / (p2?.maxHealth || 100))}%`;
   }
 }
