@@ -1,4 +1,4 @@
-<!-- arena.html (UPDATED) -->
+<!-- arena.html (RETRO ARCADE HUD - LABELED CONTROLS, FULL WIDTH TANK) -->
 <!doctype html>
 <html lang="en">
   <head>
@@ -18,43 +18,128 @@
     <div class="arena-shell">
       <!-- LEFT HUD -->
       <div class="hud hud-left">
-        <div id="p1Name" class="hud-title">PLAYER 1</div>
-        <div class="hud-bar">
-          <div id="p1HpFill" class="hud-bar-fill"></div>
-        </div>
+        <div class="hud-content">
+          <!-- Player Name -->
+          <div id="p1Name" class="hud-title">PLAYER 1</div>
 
-        <!-- (optional) life circles placeholder (kept empty for now) -->
-        <div class="hud-lives">
-          <span class="life"></span><span class="life"></span
-          ><span class="life"></span> <span class="life"></span
-          ><span class="life"></span><span class="life"></span>
+          <!-- Health Bar -->
+          <div class="hud-bar">
+            <div id="p1HpFill" class="hud-bar-fill"></div>
+          </div>
+
+          <!-- Lives -->
+          <div class="hud-lives">
+            <span class="life"></span>
+            <span class="life"></span>
+            <span class="life"></span>
+            <span class="life"></span>
+            <span class="life"></span>
+            <span class="life"></span>
+          </div>
+
+          <!-- Score Section -->
+          <div class="score-section">
+            <div class="score-label">Score</div>
+            <div id="p1Score" class="score-value">0</div>
+          </div>
+
+          <!-- Controls Section - BIG ARCADE BUTTONS -->
+          <div class="controls-section">
+            <!-- Move Label -->
+            <div class="control-label-text">MOVEMENT</div>
+            <!-- Move Controls -->
+            <div class="control-item">
+              <span class="control-key">W</span>
+              <span class="control-key">A</span>
+              <span class="control-key">S</span>
+              <span class="control-key">D</span>
+            </div>
+
+            <!-- Shoot Label -->
+            <div class="control-label-text">SHOOT</div>
+            <!-- Shoot Button -->
+            <div class="control-item">
+              <span class="control-key">Q</span>
+            </div>
+          </div>
+
+          <!-- Tank Placeholder at Bottom - FULL WIDTH -->
+          <div class="tank-placeholder">TANK</div>
         </div>
       </div>
 
       <!-- CENTER -->
       <div class="arena-center">
-        <div class="top-timer" id="matchTimerText">TIME REMAINING : --:--</div>
+        <div class="top-timer">
+          <button class="home-btn" id="homeBtn">⌂</button>
+          <div id="matchTimerText">TIME REMAINING : --:--</div>
+          <div style="width: 50px"></div>
+        </div>
 
-        <!-- UNCHANGED ID -->
+        <!-- MAIN ARENA -->
         <main id="main-box"></main>
       </div>
 
       <!-- RIGHT HUD -->
       <div class="hud hud-right">
-        <div id="p2Name" class="hud-title">PLAYER 2</div>
-        <div class="hud-bar">
-          <div id="p2HpFill" class="hud-bar-fill"></div>
-        </div>
+        <div class="hud-content">
+          <!-- Player/Bot Name -->
+          <div id="p2Name" class="hud-title">PLAYER 2</div>
 
-        <div class="hud-lives">
-          <span class="life"></span><span class="life"></span
-          ><span class="life"></span> <span class="life"></span
-          ><span class="life"></span><span class="life"></span>
+          <!-- Health Bar -->
+          <div class="hud-bar">
+            <div id="p2HpFill" class="hud-bar-fill"></div>
+          </div>
+
+          <!-- Lives -->
+          <div class="hud-lives">
+            <span class="life"></span>
+            <span class="life"></span>
+            <span class="life"></span>
+            <span class="life"></span>
+            <span class="life"></span>
+            <span class="life"></span>
+          </div>
+
+          <!-- Score Section -->
+          <div class="score-section">
+            <div class="score-label">Score</div>
+            <div id="p2Score" class="score-value">0</div>
+          </div>
+
+          <!-- Controls Section - BIG ARCADE BUTTONS -->
+          <div class="controls-section">
+            <!-- Move Label -->
+            <div class="control-label-text">MOVEMENT</div>
+            <!-- Move Controls -->
+            <div class="control-item">
+              <span class="control-key">↑</span>
+              <span class="control-key">←</span>
+              <span class="control-key">↓</span>
+              <span class="control-key">→</span>
+            </div>
+
+            <!-- Shoot Label -->
+            <div class="control-label-text">SHOOT</div>
+            <!-- Shoot Button -->
+            <div class="control-item">
+              <span class="control-key">M</span>
+            </div>
+          </div>
+
+          <!-- Tank Placeholder at Bottom - FULL WIDTH -->
+          <div class="tank-placeholder">TANK</div>
         </div>
       </div>
     </div>
 
     <script>
+      // Home button handler
+      document.getElementById("homeBtn").addEventListener("click", () => {
+        sessionStorage.removeItem("gameConfig");
+        window.location.href = "index.html";
+      });
+
       document.addEventListener("DOMContentLoaded", () => {
         requestAnimationFrame(() => {
           document.body.classList.add("is-fading-in");

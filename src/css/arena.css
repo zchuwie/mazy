@@ -1,11 +1,15 @@
-/* arena.css (UPDATED) */
+/* arena.css (RETRO PIXEL UI - LARGER ARENA, RETRO SCORE, CLEAN HOME BTN) */
 
-/* ================= RESET ================= */
+/* ================= RESET & FONT ================= */
 * {
-  margin: 0; /* IMPORTANT: remove 0 auto (it was breaking spacing) */
+  margin: 0;
   padding: 0;
   box-sizing: border-box;
+  font-family: "Press Start 2P", monospace;
 }
+
+/* Import Google Font */
+@import url("https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap");
 
 /* ================= BODY / ARENA BACKGROUND ================= */
 body {
@@ -17,7 +21,6 @@ body {
   justify-content: center;
   align-items: center;
 
-  /* UNCHANGED: your blue background */
   background: radial-gradient(
     circle at center,
     #6fa0ff 0%,
@@ -30,7 +33,7 @@ body {
   overflow: hidden;
 }
 
-/* ================= GRID OVERLAY ================= */
+/* ================= GRID OVERLAY - PULSING CYAN ================= */
 body::before {
   content: "";
   position: absolute;
@@ -40,21 +43,33 @@ body::before {
   background:
     repeating-linear-gradient(
       0deg,
-      rgba(255, 255, 255, 0.15),
-      rgba(255, 255, 255, 0.15) 1px,
-      transparent 1px,
+      rgba(0, 255, 255, 0.2),
+      rgba(0, 255, 255, 0.2) 2px,
+      transparent 2px,
       transparent 48px
     ),
     repeating-linear-gradient(
       90deg,
-      rgba(255, 255, 255, 0.15),
-      rgba(255, 255, 255, 0.15) 1px,
-      transparent 1px,
+      rgba(0, 255, 255, 0.2),
+      rgba(0, 255, 255, 0.2) 2px,
+      transparent 2px,
       transparent 48px
     );
 
-  opacity: 0.45;
+  animation: gridPulse 8s ease-in-out infinite;
   z-index: 0;
+}
+
+@keyframes gridPulse {
+  0%,
+  100% {
+    opacity: 0.25;
+    filter: brightness(1);
+  }
+  50% {
+    opacity: 0.5;
+    filter: brightness(1.2);
+  }
 }
 
 /* ================= LAYOUT ================= */
@@ -62,79 +77,219 @@ body::before {
   position: relative;
   z-index: 1;
 
-  /* evenly spaced like reference */
   display: grid;
-  grid-template-columns: 240px 1fr 240px;
-  gap: 0;
-  align-items: stretch;
+  grid-template-columns: 1fr minmax(0, 1150px) 1fr;
+  gap: 16px;
+  align-items: center;
+  justify-items: center;
 
-  /* keep whole thing centered and bounded */
-  width: min(1600px, calc(100vw - 48px));
-  max-height: calc(100dvh - 48px);
+  width: min(100vw, calc(100vw - 48px));
+  height: calc(100dvh - 48px);
+  padding: 24px;
 }
 
-/* ================= HUD PANELS ================= */
+/* ================= HUD PANELS - RETRO PIXEL STYLE ================= */
 .hud {
-  background: #e8e8e8;
-  padding: 32px 18px;
+  background: #1a3a52;
+  padding: 20px;
+  border: 4px solid #201453;
+  border-radius: 0;
 
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 18px;
+  align-items: stretch;
+  gap: 20px;
 
-  /* pixel-ish frame */
-  border-top: 12px solid #4a4a4a;
-  border-bottom: 12px solid #4a4a4a;
+  height: 100%;
+  width: 100%;
+  max-width: 280px;
+
+  box-shadow: 6px 6px 0 rgba(0, 0, 0, 0.6);
+  position: relative;
 }
 
 .hud-left {
-  border-left: 12px solid #4a4a4a;
-  border-right: 12px solid #4a4a4a; /* separator */
+  justify-self: start;
 }
 
 .hud-right {
-  border-left: 12px solid #4a4a4a; /* separator */
-  border-right: 12px solid #4a4a4a;
+  justify-self: end;
 }
 
+/* ================= HUD CONTENT WRAPPER ================= */
+.hud-content {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  height: 100%;
+  align-items: stretch;
+}
+
+/* ================= HUD TITLE - RETRO GLOW ================= */
 .hud-title {
   color: #ffffff;
   font-weight: 900;
-  font-size: 20px;
-  letter-spacing: 2px;
+  font-size: 18px;
+  letter-spacing: 3px;
   text-transform: uppercase;
-  text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.35);
+  text-align: center;
+  flex-shrink: 0;
+  text-shadow:
+    3px 3px 0 #380092,
+    0 0 12px rgba(168, 245, 255, 0.6);
 }
 
+/* ================= HEALTH BAR ================= */
 .hud-bar {
-  width: 200px;
-  height: 22px;
+  width: 100%;
+  height: 24px;
   background: #ffffff;
-  border: 4px solid #000;
+  border: 3px solid #000;
   overflow: hidden;
+  flex-shrink: 0;
+  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.4);
 }
 
 .hud-bar-fill {
   width: 100%;
   height: 100%;
   background: #ff0000;
-  transition: width 80ms linear; /* makes it feel responsive */
+  transition: width 80ms linear;
 }
 
-/* optional “life circles” look */
+/* ================= LIVES DISPLAY ================= */
 .hud-lives {
   display: grid;
-  grid-template-columns: repeat(3, 44px);
-  gap: 18px 18px;
-  margin-top: 12px;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  width: 100%;
+  flex-shrink: 0;
 }
+
 .life {
-  width: 44px;
-  height: 44px;
-  border-radius: 999px;
-  border: 3px solid rgba(0, 0, 0, 0.45);
-  background: transparent;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: 50%;
+  border: 2px solid #ffffff;
+  background: #c0c0c0;
+  box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.4);
+  max-width: 60px;
+  max-height: 60px;
+  justify-self: center;
+}
+
+/* ================= SCORE SECTION - RETRO STYLED ================= */
+.score-section {
+  width: 100%;
+  background: linear-gradient(135deg, #7dbcf6 0%, #59d4fa 100%);
+  border: 4px solid #201453;
+  padding: 14px;
+  border-radius: 0;
+  text-align: center;
+  font-weight: bold;
+  font-size: 14px;
+  flex-shrink: 0;
+  box-shadow: 6px 6px 0 #142853;
+}
+
+.score-label {
+  color: #020617;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  margin-bottom: 8px;
+  font-size: 12px;
+  font-weight: 900;
+  text-shadow: 1px 1px 0 rgba(45, 45, 45, 0.15);
+}
+
+.score-value {
+  color: #0066cc;
+  font-size: 36px;
+  font-weight: 900;
+  text-shadow: 3px 3px 0 rgba(0, 0, 0, 0.2);
+}
+
+/* ================= CONTROLS SECTION - RETRO ARCADE STYLE ================= */
+.controls-section {
+  width: 100%;
+  background: linear-gradient(135deg, #7dbcf6 0%, #59d4fa 100%);
+  border: 4px solid #201453;
+  padding: 14px 10px;
+  border-radius: 0;
+  flex-shrink: 0;
+  min-height: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  box-shadow: 6px 6px 0 #142853;
+}
+
+.controls-label {
+  color: #020617;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  font-weight: 900;
+  margin: 0;
+  display: block;
+  font-size: 13px;
+  text-shadow: 2px 2px 0 rgba(45, 45, 45, 0.15);
+  text-align: center;
+}
+
+.control-item {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 0;
+  padding: 10px 8px;
+  color: #020617;
+  font-family: "Press Start 2P", monospace;
+  font-size: 11px;
+  background: rgba(255, 255, 255, 0.4);
+  border: 3px solid #020617;
+  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.3);
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.control-item:active {
+  transform: translate(1px, 1px);
+  box-shadow: 1px 1px 0 rgba(0, 0, 0, 0.3);
+}
+
+.control-key {
+  background: #ffe600;
+  border: 3px solid #020617;
+  padding: 6px 10px;
+  border-radius: 0;
+  font-weight: 900;
+  margin: 0;
+  min-width: 50px;
+  text-align: center;
+  font-size: 16px;
+  box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.4);
+  color: #020617;
+  display: inline-block;
+}
+
+/* ================= TANK PLACEHOLDER - FULL WIDTH ================= */
+.tank-placeholder {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 9;
+  background: linear-gradient(135deg, #888 0%, #444 100%);
+  border: 4px solid #222;
+  border-radius: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 56px;
+  color: #fff;
+  font-weight: bold;
+  text-shadow: 3px 3px 0 rgba(0, 0, 0, 0.8);
+  flex-shrink: 0;
+  box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.5);
+  margin: 0 auto;
 }
 
 /* ================= CENTER COLUMN ================= */
@@ -142,9 +297,13 @@ body::before {
   display: flex;
   flex-direction: column;
   align-items: center;
+  height: 100%;
+  width: 100%;
+  max-width: 1200px;
+  gap: 12px;
 }
 
-/* timer matches arena width */
+/* ================= TOP TIMER - RETRO ARCADE ================= */
 .top-timer {
   width: 100%;
   max-width: 100%;
@@ -152,54 +311,82 @@ body::before {
 
   background: #ffe600;
 
-  border-top: 12px solid #4a4a4a;
-  border-left: 12px solid #4a4a4a;
-  border-right: 12px solid #4a4a4a;
-  border-bottom: 0;
+  border: 6px solid #000;
+  border-radius: 0;
 
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: space-between;
+  padding: 0 10px;
 
-  font-size: 28px;
+  font-size: 24px;
   font-weight: 900;
   letter-spacing: 3px;
   color: #333;
+  font-family: "Press Start 2P", monospace;
 
-  /* keep text on one line */
   white-space: nowrap;
+  position: relative;
+  flex-shrink: 0;
+  box-shadow: 6px 6px 0 #142853;
 }
 
-/* ================= MAIN ARENA BOX ================= */
-/* bigger + responsive, but keeps the SAME internal canvas size (1400x900) */
+#matchTimerText {
+  flex: 1;
+  text-align: center;
+}
+
+/* ================= HOME BUTTON - ICON ONLY, NO BORDER ================= */
+.home-btn {
+  background: #ffe600;
+  width: 50px;
+  height: 50px;
+  padding: 0;
+  border: none;
+  font-weight: bold;
+  font-size: 30px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 100ms ease;
+  flex-shrink: 0;
+  font-family: "Press Start 2P", monospace;
+  border-radius: 5px;
+}
+
+.home-btn:hover {
+  color: white;
+  background: #554e02;
+  transform: translate(1px, 1px);
+  border-radius: 5px;
+}
+
+/* ================= MAIN ARENA BOX - LARGER ================= */
 #main-box {
   width: 100%;
   height: auto;
 
-  /* IMPORTANT: lock aspect ratio to your internal canvas */
   aspect-ratio: 1400 / 900;
-
-  /* cap height so it fits viewport */
-  max-height: calc(100dvh - 160px);
 
   background-color: #dcdcdc;
 
-  border-left: 12px solid #4a4a4a;
-  border-right: 12px solid #4a4a4a;
-  border-bottom: 12px solid #4a4a4a;
-  border-top: 0;
+  border: 6px solid #000;
+  border-radius: 0;
 
   position: relative;
   overflow: hidden;
+  flex: 1;
+  box-shadow: 8px 8px 0 rgba(0, 0, 0, 0.5);
 }
 
-/* make canvas fill the arena box (scales visually, internal stays 1400x900) */
 #main-box canvas {
   position: absolute;
   inset: 0;
   width: 100% !important;
   height: 100% !important;
   display: block;
+  image-rendering: pixelated;
 }
 
 /* ================= PAGE FADE ================= */
@@ -216,6 +403,21 @@ body::before {
 body.is-fading-out .page-fade {
   opacity: 1;
 }
+
 body.is-fading-in .page-fade {
   opacity: 0;
+}
+
+/* ================= CONTROL LABELS ================= */
+.control-label-text {
+  color: #020617;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  font-weight: 900;
+  font-size: 11px;
+  text-align: center;
+  width: 100%;
+  margin-top: 6px;
+  margin-bottom: 4px;
+  text-shadow: 1px 1px 0 rgba(45, 45, 45, 0.15);
 }

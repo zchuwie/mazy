@@ -241,7 +241,7 @@ export const mazeLayout = [
 
 export const HEIGHT = 900;
 export const WIDTH = 1400;
-export const HEALTHBARHEIGHT = 75;
+export const HEALTHBARHEIGHT = 2;
 export const TILEW = 36;
 export const TILEH = 40;
 export const OFFSETY = HEALTHBARHEIGHT + 70;
