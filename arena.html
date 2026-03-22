@@ -1,4 +1,4 @@
-<!-- arena.html (RETRO ARCADE HUD - LABELED CONTROLS, FULL WIDTH TANK) -->
+<!-- arena.html (RETRO ARCADE HUD - WITH GAME OVER MODAL) -->
 <!doctype html>
 <html lang="en">
   <head>
@@ -64,7 +64,7 @@
           </div>
 
           <!-- Tank Placeholder at Bottom - FULL WIDTH -->
-          <div class="tank-placeholder">TANK</div>
+          <div class="tank-placeholder">🎮</div>
         </div>
       </div>
 
@@ -128,7 +128,66 @@
           </div>
 
           <!-- Tank Placeholder at Bottom - FULL WIDTH -->
-          <div class="tank-placeholder">TANK</div>
+          <div class="tank-placeholder">🎮</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= GAME OVER MODAL ================= -->
+    <div id="gameOverModal" class="game-over-modal" style="display: none">
+      <div class="game-over-container">
+        <!-- Title -->
+        <div class="game-over-title">GAME OVER</div>
+
+        <!-- Winner Section -->
+        <div class="winner-section">
+          <div id="winnerMessage" class="winner-message">
+            🏆 PLAYER 1 WINS 🏆
+          </div>
+        </div>
+
+        <!-- Final Score Section -->
+        <div class="final-score-section">
+          <div class="final-score-label">FINAL SCORE</div>
+          <div class="score-comparison">
+            <div class="score-row">
+              <span id="scoreP1Name" class="score-name">PLAYER 1</span>
+              <span id="scoreP1Value" class="score-number">0</span>
+            </div>
+            <div class="score-divider">:</div>
+            <div class="score-row">
+              <span id="scoreP2Name" class="score-name">PLAYER 2</span>
+              <span id="scoreP2Value" class="score-number">0</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="game-over-buttons">
+          <button id="rematchBtn" class="game-over-btn rematch-btn">
+            <span class="btn-key">R</span> REMATCH
+          </button>
+          <button id="menuBtn" class="game-over-btn menu-btn">
+            <span class="btn-key">ESC</span> MENU
+          </button>
+        </div>
+
+        <!-- Keyboard Hint -->
+        <div class="keyboard-hint">
+          Press R for Rematch or ESC for Main Menu
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= ROUND WINNER BANNER ================= -->
+    <div
+      id="roundWinnerBanner"
+      class="round-winner-banner"
+      style="display: none"
+    >
+      <div class="banner-content">
+        <div id="roundWinnerText" class="banner-text">
+          PLAYER 2 WINS THIS ROUND
         </div>
       </div>
     </div>
@@ -145,6 +204,18 @@
           document.body.classList.add("is-fading-in");
         });
       });
+
+      // Game Over Button Handlers
+      document.getElementById("rematchBtn").addEventListener("click", () => {
+        window.gameOverActions?.rematch?.();
+      });
+
+      document.getElementById("menuBtn").addEventListener("click", () => {
+        window.gameOverActions?.menu?.();
+      });
+
+      // Global object to receive actions from main.js
+      window.gameOverActions = {};
     </script>
 
     <div class="page-fade" aria-hidden="true"></div>

@@ -1,7 +1,9 @@
-// ./src/main.js (FULL UPDATED)
+// ./src/main.js (FULL UPDATED WITH GAME OVER UI + ROUND WINNER BANNER)
 
 import { Orb } from "./components/orb.js";
 import { updateHud } from "./components/healthbar.js";
+import { initGameOverUI } from "./components/gameOver.js";
+import { initRoundWinnerBanner } from "./components/roundWinner.js";
 import {
   preloadImages,
   wallsColliderSetup,
@@ -33,6 +35,8 @@ const sketch = (p) => {
   let roundOver = false;
   let roundMessage = "";
   let roundResetAt = 0;
+  let gameOverUI = null;
+  let roundWinnerBanner = null;
 
   let gameState = {
     players: [],
@@ -98,11 +102,6 @@ const sketch = (p) => {
       resetTank(gameState.players[0], WIDTH / 2, HEIGHT / 2);
       if (gameState.bot)
         resetTank(gameState.bot, WIDTH / 2 + 150, HEIGHT / 2 + 150);
-    } else if (gameState.gameMode === 3) {
-      resetTank(gameState.players[0], WIDTH / 2, HEIGHT / 2);
-      resetTank(gameState.players[1], WIDTH / 2 + 150, HEIGHT / 2);
-      if (gameState.bot)
-        resetTank(gameState.bot, WIDTH / 2 + 150, HEIGHT / 2 + 150);
     }
   }
 
@@ -116,7 +115,6 @@ const sketch = (p) => {
       tank.sprite.speed = 0;
       tank.sprite.collider = "static";
     }
-    // Bullets keep moving intentionally
   }
 
   function resetTank(tank, x, y) {
@@ -157,11 +155,10 @@ const sketch = (p) => {
     bot.lastHistoryTime = 0;
     bot.nearbyOrbs = [];
     bot.target = null;
-    // Clear nav cache so stale paths don't carry across rounds/maps
-    bot._navPath        = null;
-    bot._navDest        = null;
+    bot._navPath = null;
+    bot._navDest = null;
     bot._navLastCompute = 0;
-    bot._fleeTarget     = null;
+    bot._fleeTarget = null;
     bot._fleeTargetTime = 0;
   }
 
@@ -194,12 +191,6 @@ const sketch = (p) => {
       if (playerDead && botDead) return { message: "Draw", winnerKey: null };
       if (playerDead) return { message: "Bot wins", winnerKey: "bot" };
       if (botDead) return { message: "Player wins", winnerKey: "player" };
-    } else if (gameState.gameMode === 3) {
-      const p1Dead = gameState.players[0].health <= 0;
-      const p2Dead = gameState.players[1].health <= 0;
-      const botDead = gameState.bot && gameState.bot.health <= 0;
-      if (botDead) return { message: "Players win", winnerKey: "players" };
-      if (p1Dead && p2Dead) return { message: "Bot wins", winnerKey: "bot" };
     }
     return null;
   }
@@ -210,10 +201,6 @@ const sketch = (p) => {
     if (winnerKey === "player2") gameState.score.player2 += 1;
     if (winnerKey === "player") gameState.score.player += 1;
     if (winnerKey === "bot") gameState.score.bot += 1;
-    if (winnerKey === "players") {
-      gameState.score.player1 += 1;
-      gameState.score.player2 += 1;
-    }
   }
 
   function startRoundReset(outcome) {
@@ -222,6 +209,20 @@ const sketch = (p) => {
     roundResetAt = p.millis() + 1500;
     awardWin(outcome.winnerKey);
     freezeAllSprites();
+
+    // Show round winner banner
+    if (roundWinnerBanner) {
+      let bannerMessage = outcome.message;
+
+      // Format message for banner
+      if (bannerMessage.toLowerCase().includes("draw")) {
+        bannerMessage = "DRAW THIS ROUND";
+      } else if (bannerMessage.toLowerCase().includes("wins")) {
+        bannerMessage = bannerMessage.toUpperCase() + " THIS ROUND";
+      }
+
+      roundWinnerBanner.show(bannerMessage, 1500);
+    }
   }
 
   function getMatchDurationSeconds() {
@@ -239,27 +240,6 @@ const sketch = (p) => {
       }
     }
     return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
-  }
-
-  function getMatchWinnerMessage() {
-    if (gameState.gameMode === 1) {
-      if (gameState.score.player1 === gameState.score.player2) return "Draw";
-      return gameState.score.player1 > gameState.score.player2
-        ? "Player 1 wins"
-        : "Player 2 wins";
-    }
-    if (gameState.gameMode === 2) {
-      if (gameState.score.player === gameState.score.bot) return "Draw";
-      return gameState.score.player > gameState.score.bot
-        ? "Player wins"
-        : "Bot wins";
-    }
-    if (gameState.gameMode === 3) {
-      const playersScore = gameState.score.player1 + gameState.score.player2;
-      if (playersScore === gameState.score.bot) return "Draw";
-      return playersScore > gameState.score.bot ? "Players win" : "Bot wins";
-    }
-    return "Draw";
   }
 
   function resetRound() {
@@ -283,7 +263,6 @@ const sketch = (p) => {
 
     if (gameState.bot) resetBotState(gameState.bot);
 
-    // Re-supply the new map to the bot's tile-based LOS system
     if (gameState.bot && gameState.bot.setMazeData) {
       gameState.bot.setMazeData(selectedMap, TILEW, TILEH, OFFSETY);
     }
@@ -343,6 +322,12 @@ const sketch = (p) => {
     gameState.matchDurationSeconds = getMatchDurationSeconds();
     gameState.matchStartMs = p.millis();
     gameState.matchOver = false;
+
+    // Initialize Game Over UI
+    gameOverUI = initGameOverUI();
+
+    // Initialize Round Winner Banner
+    roundWinnerBanner = initRoundWinnerBanner();
   };
 
   p.draw = () => {
@@ -356,7 +341,6 @@ const sketch = (p) => {
       if (elapsedSeconds >= gameState.matchDurationSeconds) {
         gameState.matchOver = true;
         roundOver = true;
-        roundMessage = `Time up: ${getMatchWinnerMessage()}`;
       }
     }
 
@@ -377,78 +361,35 @@ const sketch = (p) => {
       players: gameState.players,
       bot: gameState.bot,
       remainingSeconds,
+      score: gameState.score,
     });
 
     if (gameState.matchOver) {
-      // Draw end screen directly on the p5 canvas
-      p.push();
-      p.fill(0, 0, 0, 180);
-      p.noStroke();
-      p.rect(0, 0, WIDTH, HEIGHT);
-
-      // Title
-      p.fill(255, 230, 0);
-      p.textSize(48);
-      p.textAlign(p.CENTER, p.CENTER);
-      p.textStyle(p.BOLD);
-      p.text("GAME OVER", WIDTH / 2, HEIGHT / 2 - 160);
-
-      // Winner message
-      const winMsg = getMatchWinnerMessage();
-      p.fill(255);
-      p.textSize(26);
-      p.textStyle(p.NORMAL);
-      p.text(winMsg.toUpperCase(), WIDTH / 2, HEIGHT / 2 - 90);
-
-      // Score display
-      const scoreBoxW = 340;
-      const scoreBoxH = 130;
-      const scoreBoxX = WIDTH / 2 - scoreBoxW / 2;
-      const scoreBoxY = HEIGHT / 2 - 50;
-
-      p.fill(30, 30, 60, 220);
-      p.stroke(255, 230, 0);
-      p.strokeWeight(3);
-      p.rect(scoreBoxX, scoreBoxY, scoreBoxW, scoreBoxH, 8);
-      p.noStroke();
-
-      p.textSize(15);
-      p.fill(200, 200, 255);
-      p.text("FINAL SCORE", WIDTH / 2, scoreBoxY + 28);
-
-      p.textSize(22);
-      p.fill(255);
-      if (gameState.gameMode === 1) {
-        p.text(
-          `P1  ${gameState.score.player1}  :  ${gameState.score.player2}  P2`,
-          WIDTH / 2, scoreBoxY + 75
-        );
-      } else if (gameState.gameMode === 2) {
-        p.text(
-          `PLAYER  ${gameState.score.player}  :  ${gameState.score.bot}  BOT`,
-          WIDTH / 2, scoreBoxY + 75
-        );
-      } else {
-        p.text(
-          `PLAYERS  ${gameState.score.player1 + gameState.score.player2}  :  ${gameState.score.bot}  BOT`,
-          WIDTH / 2, scoreBoxY + 75
-        );
+      // Show HTML Game Over Modal
+      if (gameOverUI) {
+        gameOverUI.show(gameState, {
+          rematch: () => {
+            gameState.score = { player1: 0, player2: 0, player: 0, bot: 0 };
+            gameState.matchStartMs = p.millis();
+            gameState.matchOver = false;
+            roundOver = false;
+            gameOverUI.hide();
+            resetRound();
+          },
+          menu: () => {
+            sessionStorage.removeItem("gameConfig");
+            window.location.href = "index.html";
+          },
+        });
       }
 
-      // Instruction buttons hint
-      p.textSize(14);
-      p.fill(200, 255, 200);
-      p.text("[ R ]  REMATCH       [ ESC ]  MAIN MENU", WIDTH / 2, HEIGHT / 2 + 120);
-
-      p.pop();
-
-      // Keyboard controls for end screen
+      // Handle keyboard
       if (p.kb.presses("r")) {
-        // Full rematch — reset scores and restart
         gameState.score = { player1: 0, player2: 0, player: 0, bot: 0 };
         gameState.matchStartMs = p.millis();
         gameState.matchOver = false;
         roundOver = false;
+        if (gameOverUI) gameOverUI.hide();
         resetRound();
       }
       if (p.kb.presses("escape")) {
@@ -459,13 +400,6 @@ const sketch = (p) => {
     }
 
     if (roundOver) {
-      p.push();
-      p.fill(0);
-      p.textSize(28);
-      p.textAlign(p.CENTER, p.CENTER);
-      p.text(roundMessage, WIDTH / 2, HEALTHBARHEIGHT / 2);
-      p.pop();
-
       if (p.millis() >= roundResetAt) {
         resetRound();
       }
@@ -589,13 +523,11 @@ const sketch = (p) => {
       const bullet = gameState.bullet[i];
       let hitTarget = false;
 
-      // Grace time so bullets don't instantly hit the shooter on spawn
       if (bullet._spawnMs == null) bullet._spawnMs = p.millis();
       const bulletAgeMs = p.millis() - bullet._spawnMs;
       const selfGraceMs = 120;
 
       for (let player of gameState.players) {
-        // allow self-hit after grace
         if (bullet._shooter === player && bulletAgeMs < selfGraceMs) continue;
 
         if (bullet.overlaps(player.sprite)) {
@@ -607,9 +539,8 @@ const sketch = (p) => {
       }
 
       if (!hitTarget && gameState.bot) {
-        // allow self-hit after grace
         if (bullet._shooter === gameState.bot && bulletAgeMs < selfGraceMs) {
-          // skip
+          //
         } else if (bullet.overlaps(gameState.bot.sprite)) {
           const calcDamage = calculateDamage(bullet, p);
           gameState.bot.playerHit(bullet, calcDamage);
@@ -621,11 +552,9 @@ const sketch = (p) => {
     }
 
     // Handle laser path burning damage
-    // Checks every point in the trail so touching the path deals damage.
-    // Throttled per-bullet to once every 100ms to avoid per-frame damage spam.
-    const _laserBurnDamage = 2;        // HP per tick
-    const _laserBurnInterval = 100;    // ms between ticks
-    const _laserBurnRadius = 14;       // px contact radius along path
+    const _laserBurnDamage = 2;
+    const _laserBurnInterval = 100;
+    const _laserBurnRadius = 14;
     const _selfGraceMs = 120;
 
     for (let i = 0; i < gameState.bullet.length; i++) {
@@ -635,18 +564,19 @@ const sketch = (p) => {
       if (bullet._spawnMs == null) bullet._spawnMs = p.millis();
       const bulletAgeMs = p.millis() - bullet._spawnMs;
 
-      // Throttle per bullet
       if (bullet._lastBurnTick == null) bullet._lastBurnTick = 0;
       if (p.millis() - bullet._lastBurnTick < _laserBurnInterval) continue;
       bullet._lastBurnTick = p.millis();
 
-      // Check every path point against every target once per tick
       for (const player of gameState.players) {
         if (bullet._shooter === player && bulletAgeMs < _selfGraceMs) continue;
         let touching = false;
         for (const pt of bullet._pathPoints) {
           const d = p.dist(pt.x, pt.y, player.sprite.x, player.sprite.y);
-          if (d < player.sprite.diameter / 2 + _laserBurnRadius) { touching = true; break; }
+          if (d < player.sprite.diameter / 2 + _laserBurnRadius) {
+            touching = true;
+            break;
+          }
         }
         if (touching) {
           player.health -= _laserBurnDamage;
@@ -658,7 +588,10 @@ const sketch = (p) => {
         let touching = false;
         for (const pt of bullet._pathPoints) {
           const d = p.dist(pt.x, pt.y, gameState.bot.sprite.x, gameState.bot.sprite.y);
-          if (d < gameState.bot.sprite.diameter / 2 + _laserBurnRadius) { touching = true; break; }
+          if (d < gameState.bot.sprite.diameter / 2 + _laserBurnRadius) {
+            touching = true;
+            break;
+          }
         }
         if (touching) {
           gameState.bot.health -= _laserBurnDamage;
