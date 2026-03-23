@@ -1,3 +1,4 @@
+// src/main.js
 import { Orb } from "./components/orb.js";
 import { updateHud } from "./components/healthbar.js";
 import { initGameOverUI } from "./components/gameOver.js";
@@ -19,6 +20,7 @@ import {
   orbTypes,
   mazeLayout,
   musicTracks,
+  tankCharacters,
 } from "./interface.js";
 import {
   renderArenaConfig,
@@ -26,6 +28,7 @@ import {
   determineMapSelection,
 } from "./config.js";
 import { renderOrbSpawn } from "./mechanics.js";
+import { createTankPreview } from "./components/tankPreview.js";
 
 const sketch = (p) => {
   let hWalls, vWalls, borderWalls;
@@ -358,6 +361,24 @@ const sketch = (p) => {
 
     gameState.gameMode = mode;
 
+    // ---- Tank previews based on selected names ----
+    const p1Name = config?.player1;
+    let p1Index = tankCharacters.findIndex((t) => t.name === p1Name);
+    if (p1Index < 0) p1Index = 0;
+
+    let p2IndexFromConfig = -1;
+    if (mode === 1) {
+      const p2Name = config?.player2;
+      p2IndexFromConfig = tankCharacters.findIndex((t) => t.name === p2Name);
+      if (p2IndexFromConfig < 0) p2IndexFromConfig = 1;
+    }
+
+    createTankPreview("p1TankPreview", p1Index);
+    if (mode === 1) {
+      createTankPreview("p2TankPreview", p2IndexFromConfig);
+    }
+    // -----------------------------------------
+
     const wallsData = wallsColliderSetup(p, hWalls, vWalls, borderWalls);
     hWalls = wallsData.hWalls;
     vWalls = wallsData.vWalls;
@@ -382,6 +403,14 @@ const sketch = (p) => {
     } else if (mode === 2) {
       gameState.players = [players.player];
       gameState.bot = players.bot;
+
+      // Bot tank is random; use its character name for preview.
+      if (gameState.bot && gameState.bot.character) {
+        const botCharName = gameState.bot.character.name;
+        let botIndex = tankCharacters.findIndex((t) => t.name === botCharName);
+        if (botIndex < 0) botIndex = 0;
+        createTankPreview("p2TankPreview", botIndex);
+      }
     }
 
     applySpawnPositions();
@@ -427,8 +456,6 @@ const sketch = (p) => {
       if (elapsedSeconds >= gameState.matchDurationSeconds) {
         gameState.matchOver = true;
         roundOver = true;
-        // You can keep or stop music here; it won't affect arena drawing.
-        // stopCurrentMusic();
       }
     }
 
@@ -510,12 +537,13 @@ const sketch = (p) => {
             _pl.sprite.x - gameState.bot.sprite.x,
             _pl.sprite.y - gameState.bot.sprite.y,
           );
-            if (_d < _closestDist) {
+          if (_d < _closestDist) {
             _closestDist = _d;
             _closest = _pl;
           }
         }
-        if (gameState.bot.target !== _closest) gameState.bot.setTarget(_closest);
+        if (gameState.bot.target !== _closest)
+          gameState.bot.setTarget(_closest);
       }
       gameState.bot.update(gameState.orbs);
     }
@@ -647,7 +675,12 @@ const sketch = (p) => {
 
     for (let i = 0; i < gameState.bullet.length; i++) {
       const bullet = gameState.bullet[i];
-      if (!bullet._isLaser || !bullet._pathPoints || bullet._pathPoints.length === 0) continue;
+      if (
+        !bullet._isLaser ||
+        !bullet._pathPoints ||
+        bullet._pathPoints.length === 0
+      )
+        continue;
 
       if (bullet._spawnMs == null) bullet._spawnMs = p.millis();
       const bulletAgeMs = p.millis() - bullet._spawnMs;
