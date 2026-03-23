@@ -1,9 +1,7 @@
-// ./src/components/healthbar.js (UPDATED WITH SCORE DISPLAY)
-
 const clampPct = (value01) => {
   const v = Number(value01);
   if (!Number.isFinite(v)) return 0;
-  return Math.max(0, Math.min(1, v)) * 100;
+  return Math.round(Math.max(0, Math.min(1, v)) * 100);
 };
 
 const formatCountdown = (seconds) => {
@@ -34,7 +32,7 @@ export function updateHud({ mode, players, bot, remainingSeconds, score }) {
 
   // Update names
   if (p1NameEl) p1NameEl.textContent = mode === 2 ? "PLAYER" : "PLAYER 1";
-  if (p1Fill) p1Fill.style.width = `${clampPct((p1?.health ?? 0) / 100)}%`;
+  if (p1Fill) p1Fill.style.width = `${clampPct((p1?.health ?? 0) / (p1?.maxHealth ?? 100))}%`;
 
   // Update scores
   if (p1ScoreEl && score) {
@@ -47,15 +45,15 @@ export function updateHud({ mode, players, bot, remainingSeconds, score }) {
 
   if (mode === 1) {
     if (p2NameEl) p2NameEl.textContent = "PLAYER 2";
-    if (p2Fill) p2Fill.style.width = `${clampPct((p2?.health ?? 0) / 100)}%`;
+    if (p2Fill) p2Fill.style.width = `${clampPct((p2?.health ?? 0) / (p2?.maxHealth ?? 100))}%`;
     if (p2ScoreEl) p2ScoreEl.textContent = score?.player2 ?? 0;
   } else if (mode === 2) {
     if (p2NameEl) p2NameEl.textContent = "BOT";
-    if (p2Fill) p2Fill.style.width = `${clampPct((bot?.health ?? 0) / 100)}%`;
+    if (p2Fill) p2Fill.style.width = `${clampPct((bot?.health ?? 0) / (bot?.maxHealth ?? 100))}%`;
     if (p2ScoreEl) p2ScoreEl.textContent = score?.bot ?? 0;
   } else {
     if (p2NameEl) p2NameEl.textContent = "PLAYER 2";
-    if (p2Fill) p2Fill.style.width = `${clampPct((p2?.health ?? 0) / 100)}%`;
+    if (p2Fill) p2Fill.style.width = `${clampPct((p2?.health ?? 0) / (p2?.maxHealth ?? 100))}%`;
     if (p2ScoreEl) p2ScoreEl.textContent = score?.player2 ?? 0;
   }
 }

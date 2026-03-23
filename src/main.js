@@ -1,5 +1,3 @@
-// ./src/main.js (FULL UPDATED WITH GAME OVER UI + ROUND WINNER BANNER)
-
 import { Orb } from "./components/orb.js";
 import { updateHud } from "./components/healthbar.js";
 import { initGameOverUI } from "./components/gameOver.js";
@@ -20,6 +18,7 @@ import {
   OFFSETY,
   orbTypes,
   mazeLayout,
+  musicTracks,
 } from "./interface.js";
 import {
   renderArenaConfig,
@@ -37,6 +36,14 @@ const sketch = (p) => {
   let roundResetAt = 0;
   let gameOverUI = null;
   let roundWinnerBanner = null;
+
+  // ---- MUSIC STATE (ASYNC / NON-BLOCKING) ----
+  const bgmState = musicTracks.map(() => ({
+    sound: null,
+    loading: false,
+    failed: false,
+  }));
+  let currentMusic = null;
 
   let gameState = {
     players: [],
@@ -57,7 +64,71 @@ const sketch = (p) => {
     matchOver: false,
   };
 
+  // --------- MUSIC HELPERS (NON-BLOCKING) ---------
+
+  function stopCurrentMusic() {
+    if (currentMusic && currentMusic.isPlaying && currentMusic.isPlaying()) {
+      currentMusic.stop();
+    }
+    currentMusic = null;
+  }
+
+  function ensureTrackLoaded(index) {
+    const state = bgmState[index];
+    if (!state || state.loading || state.sound || state.failed) return;
+
+    state.loading = true;
+    const file = musicTracks[index]?.file;
+    if (!file) {
+      state.failed = true;
+      return;
+    }
+
+    // IMPORTANT: this does NOT block the sketch; it loads in background.
+    p.loadSound(
+      file,
+      (snd) => {
+        state.sound = snd;
+        state.loading = false;
+        state.failed = false;
+      },
+      (err) => {
+        console.error("Failed to load music track:", file, err);
+        state.loading = false;
+        state.failed = true;
+      },
+    );
+  }
+
+  function playMapMusic(mapIndex) {
+    stopCurrentMusic();
+
+    if (!musicTracks || musicTracks.length === 0) return;
+
+    const trackIndex = Math.max(
+      0,
+      Math.min(mapIndex, musicTracks.length - 1),
+    );
+    const state = bgmState[trackIndex];
+
+    // Start loading if not yet
+    ensureTrackLoaded(trackIndex);
+
+    // If sound is already loaded, play immediately
+    if (state.sound) {
+      state.sound.setVolume(0.1);
+      state.sound.loop();
+      currentMusic = state.sound;
+    } else {
+      // If still loading, we can poll later in draw() to start it once ready
+      currentMusic = null;
+    }
+  }
+
+  // --------- PRELOAD / MAP RENDERING ---------
+
   p.preload = () => {
+    // ONLY images/graphics here; music is loaded later and never blocks.
     preloadImages(p);
   };
 
@@ -71,6 +142,10 @@ const sketch = (p) => {
       TILEH,
       OFFSETY,
     );
+
+    // Kick off music for this map (non-blocking)
+    playMapMusic(mapIndex);
+
     return selected;
   }
 
@@ -210,11 +285,9 @@ const sketch = (p) => {
     awardWin(outcome.winnerKey);
     freezeAllSprites();
 
-    // Show round winner banner
     if (roundWinnerBanner) {
       let bannerMessage = outcome.message;
 
-      // Format message for banner
       if (bannerMessage.toLowerCase().includes("draw")) {
         bannerMessage = "DRAW THIS ROUND";
       } else if (bannerMessage.toLowerCase().includes("wins")) {
@@ -270,6 +343,8 @@ const sketch = (p) => {
     gameState.orbs = renderOrbSpawn(p, selectedMap, orbTypes);
   }
 
+  // --------- SETUP / DRAW ---------
+
   p.setup = () => {
     new p.Canvas(WIDTH, HEIGHT);
 
@@ -323,15 +398,26 @@ const sketch = (p) => {
     gameState.matchStartMs = p.millis();
     gameState.matchOver = false;
 
-    // Initialize Game Over UI
     gameOverUI = initGameOverUI();
-
-    // Initialize Round Winner Banner
     roundWinnerBanner = initRoundWinnerBanner();
   };
 
   p.draw = () => {
     p.background(220);
+
+    // OPTIONAL: if we scheduled music but it wasn't ready then, start it when ready
+    if (!currentMusic && musicTracks.length > 0) {
+      const trackIndex = Math.max(
+        0,
+        Math.min(currentMapIndex, musicTracks.length - 1),
+      );
+      const state = bgmState[trackIndex];
+      if (state && state.sound && !state.sound.isPlaying()) {
+        state.sound.setVolume(0.6);
+        state.sound.loop();
+        currentMusic = state.sound;
+      }
+    }
 
     // Match timer logic
     if (!gameState.matchOver && gameState.matchDurationSeconds > 0) {
@@ -341,6 +427,8 @@ const sketch = (p) => {
       if (elapsedSeconds >= gameState.matchDurationSeconds) {
         gameState.matchOver = true;
         roundOver = true;
+        // You can keep or stop music here; it won't affect arena drawing.
+        // stopCurrentMusic();
       }
     }
 
@@ -365,7 +453,6 @@ const sketch = (p) => {
     });
 
     if (gameState.matchOver) {
-      // Show HTML Game Over Modal
       if (gameOverUI) {
         gameOverUI.show(gameState, {
           rematch: () => {
@@ -378,12 +465,12 @@ const sketch = (p) => {
           },
           menu: () => {
             sessionStorage.removeItem("gameConfig");
+            stopCurrentMusic();
             window.location.href = "index.html";
           },
         });
       }
 
-      // Handle keyboard
       if (p.kb.presses("r")) {
         gameState.score = { player1: 0, player2: 0, player: 0, bot: 0 };
         gameState.matchStartMs = p.millis();
@@ -394,6 +481,7 @@ const sketch = (p) => {
       }
       if (p.kb.presses("escape")) {
         sessionStorage.removeItem("gameConfig");
+        stopCurrentMusic();
         window.location.href = "index.html";
       }
       return;
@@ -422,7 +510,7 @@ const sketch = (p) => {
             _pl.sprite.x - gameState.bot.sprite.x,
             _pl.sprite.y - gameState.bot.sprite.y,
           );
-          if (_d < _closestDist) {
+            if (_d < _closestDist) {
             _closestDist = _d;
             _closest = _pl;
           }
@@ -601,11 +689,11 @@ const sketch = (p) => {
     }
 
     // Handle shooting controls
-    if (p.kb.presses("q")) {
+    if (p.kb.presses("space")) {
       gameState.players[0].shoot();
     }
 
-    if (gameState.gameMode === 1 && p.kb.presses("m")) {
+    if (gameState.gameMode === 1 && p.kb.presses("enter")) {
       gameState.players[1].shoot();
     }
 
@@ -616,6 +704,7 @@ const sketch = (p) => {
 
     if (p.kb.presses("escape")) {
       sessionStorage.removeItem("gameConfig");
+      stopCurrentMusic();
       window.location.href = "index.html";
     }
   };

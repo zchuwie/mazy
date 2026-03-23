@@ -62,6 +62,18 @@ export const orbTypes = [
     { name: 'freeze', image: '../assets/orbs/freeze.png' }
 ]
 
+export const musicTracks = [
+    { name: 'Map 1', file: '../assets/audio/bgm/map/map-1-bgm.mp3' },
+    { name: 'Map 2', file: '../assets/audio/bgm/map/map-2-bgm.mp3' },
+    { name: 'Map 3', file: '../assets/audio/bgm/map/map-3-bgm.mp3' },
+    { name: 'Map 4', file: '../assets/audio/bgm/map/map-4-bgm.mp3' },
+    { name: 'Map 5', file: '../assets/audio/bgm/map/map-5-bgm.mp3' },
+    { name: 'Map 6', file: '../assets/audio/bgm/map/map-6-bgm.mp3' },
+    { name: 'Map 7', file: '../assets/audio/bgm/map/map-7-bgm.mp3' },
+    { name: 'Map 8', file: '../assets/audio/bgm/map/map-8-bgm.mp3' },
+
+]
+
 export const mazeLayout = [
     [
         ".............../....../................",

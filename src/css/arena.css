@@ -157,8 +157,8 @@ body::before {
   transition: width 80ms linear;
 }
 
-/* ================= LIVES DISPLAY ================= */
-.hud-lives {
+/* ================= ORB DISPLAY ================= */
+.hud-orb {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 12px;
@@ -166,7 +166,7 @@ body::before {
   flex-shrink: 0;
 }
 
-.life {
+.orb {
   width: 100%;
   aspect-ratio: 1 / 1;
   border-radius: 50%;
