@@ -75,6 +75,7 @@ export class Orb {
     console.log(`Applying effect: ${this.type} to player`);
 
     // Play SFX for supported orb types, if main.js registered the helper
+    // @ts-ignore
     if (window.__mazyPlayOrbSfx) {
       if (
         this.type === "freeze" ||
@@ -84,6 +85,7 @@ export class Orb {
         this.type === "speed" ||
         this.type === "damage"
       ) {
+        // @ts-ignore
         window.__mazyPlayOrbSfx(this.type);
       }
     }

@@ -1,4 +1,72 @@
+// src/index.js
 import { tankCharacters as characters } from "./interface.js";
+
+// --- Character stats & descriptions for selection UI ---
+
+// Short retro descriptions per tank
+const tankDescriptions = {
+  "Tank Alpha": "Balanced all‑rounder with solid speed and firepower.",
+  "Tank Bravo": "Heavy armor tank. Slow but very hard to destroy.",
+  "Tank Cobra": "Glass cannon: very fast, high damage, low armor.",
+  "Tank Delta": "Laser cannon: slow rate, huge damage per shot.",
+};
+
+function clampPercent(v) {
+  return Math.max(10, Math.min(100, v)); // keep bars at least 10% visible
+}
+
+function speedPercent(baseSpeed) {
+  const min = 4;
+  const max = 6.5;
+  return clampPercent(((baseSpeed - min) / (max - min)) * 100);
+}
+
+function damagePercent(baseDamage) {
+  const min = 9;
+  const max = 32;
+  return clampPercent(((baseDamage - min) / (max - min)) * 100);
+}
+
+function fireRatePercent(shootCooldown) {
+  // lower cooldown = better bar
+  const min = 320;
+  const max = 880;
+  return clampPercent(((max - shootCooldown) / (max - min)) * 100);
+}
+
+/**
+ * Update the character selection UI for a given player panel.
+ * @param {"1"|"2"} playerId
+ * @param {number} tankIndex
+ */
+function updateCharacterPanel(playerId, tankIndex) {
+  const tank = characters[tankIndex];
+  if (!tank) return;
+
+  const slot = document.querySelector(
+    playerId === "1" ? "#player1 .character-box" : "#player2 .character-box",
+  );
+  if (!slot) return;
+
+  // Name bar text (bottom)
+  const nameEl = slot.querySelector(".tank-name-bar .tank-name-text");
+  if (nameEl) nameEl.textContent = tank.name;
+
+  // Description text (inside .char-desc)
+  const descEl = slot.querySelector(".char-desc p");
+  if (descEl) {
+    descEl.textContent =
+      tankDescriptions[tank.name] || "Prototype battle tank.";
+  }
+
+  // Stat fills: order is Speed, Damage, Fire Rate
+  const statFills = slot.querySelectorAll(".stat .stat-fill");
+  if (statFills.length >= 3) {
+    statFills[0].style.width = `${speedPercent(tank.baseSpeed)}%`;
+    statFills[1].style.width = `${damagePercent(tank.baseDamage)}%`;
+    statFills[2].style.width = `${fireRatePercent(tank.shootCooldown)}%`;
+  }
+}
 
 const sketch = (p) => {
     let bgMusic;
@@ -126,11 +194,6 @@ const sketch = (p) => {
             }
         });
     }
-
-    // =====================
-    // Apply hover to ALL buttons
-    // =====================
-    // (run after DOM is ready so buttons exist)
 
     // =====================
     // DOM READY
@@ -556,10 +619,6 @@ const sketch = (p) => {
     }
 
     // =====================
-    // Map selection hover/click
-    // =====================
-
-    // =====================
     // Render selected characters
     // =====================
 
@@ -567,36 +626,30 @@ const sketch = (p) => {
         const p1Char = document.getElementById('p1Char');
         const p2Char = document.getElementById('p2Char');
 
-        // bottom bars (we'll use these instead of the label under the image)
-        const p1TankName = document.querySelector('#player1 .tank-name-text');
-        const p2TankName = document.querySelector('#player2 .tank-name-text');
-
         if (!p1Char || !p2Char) return;
 
         // Clear previous content
         p1Char.innerHTML = '';
         p2Char.innerHTML = '';
 
-        // Player 1 image only
+        // Player 1 image
         const img1 = document.createElement('img');
         img1.src = characters[player1Index].image;
         img1.alt = characters[player1Index].name;
         img1.classList.add('char-image');
         p1Char.appendChild(img1);
 
-        // Player 2 image only
+        // Player 2 image
         const img2 = document.createElement('img');
         img2.src = characters[player2Index].image;
         img2.alt = characters[player2Index].name;
         img2.classList.add('char-image');
         p2Char.appendChild(img2);
 
-        // Update the bottom "Tank Name" bar text
-        if (p1TankName) p1TankName.textContent = characters[player1Index].name;
-        if (p2TankName) p2TankName.textContent = characters[player2Index].name;
+        // Also update stats + descriptions + name bars
+        updateCharacterPanel("1", player1Index);
+        updateCharacterPanel("2", player2Index);
     }
-
-
 
     function selectCharacterSound() {
         if (characterSelectSound && characterSelectSound.isLoaded()) {
