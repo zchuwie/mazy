@@ -71,8 +71,16 @@ export const musicTracks = [
     { name: 'Map 6', file: '../assets/audio/bgm/map/map-6-bgm.mp3' },
     { name: 'Map 7', file: '../assets/audio/bgm/map/map-7-bgm.mp3' },
     { name: 'Map 8', file: '../assets/audio/bgm/map/map-8-bgm.mp3' },
-
 ]
+
+export const orbHudInactive = {
+  speed:  '../assets/orbs/inactive/speed-inactive.png',
+  damage: '../assets/orbs/inactive/damage-inactive.png',
+  health: '../assets/orbs/inactive/health-inactive.png',
+  rapid:  '../assets/orbs/inactive/rapidfire-inactive.png',
+  slow:   '../assets/orbs/inactive/slow-inactive.png',
+  freeze: '../assets/orbs/inactive/freeze-inactive.png'
+};
 
 export const mazeLayout = [
     [

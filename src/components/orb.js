@@ -71,27 +71,42 @@ export class Orb {
     const duration = 5000;
     console.log(`Applying effect: ${this.type} to player`);
 
+    // --- NEW: track effect end time per orb type for HUD + logic ---
+    if (!player.orbEffectEndTimes) {
+      player.orbEffectEndTimes = {};
+    }
+
+    const now = this.p.millis();
     switch (this.type) {
       case "speed":
         player.applySpeedBoost(1.1, duration);
+        player.orbEffectEndTimes["speed"] = now + duration;
         break;
       case "damage":
         player.applyDamageBoost(1.5, duration);
+        player.orbEffectEndTimes["damage"] = now + duration;
         break;
       case "health":
+        // Health is instant; treat as a very short visual indicator if you want.
         player.heal(30);
+        // Example: show health orb for 1s
+        player.orbEffectEndTimes["health"] = now + 1000;
         break;
       case "rapid":
         player.applyRapidFire(0.5, duration);
+        player.orbEffectEndTimes["rapid"] = now + duration;
         break;
       case "slow":
         player.applySpeedBoost(0.5, duration);
+        player.orbEffectEndTimes["slow"] = now + duration;
         break;
       case "freeze":
         player.applyFreeze(2000);
+        player.orbEffectEndTimes["freeze"] = now + 2000;
         break;
       case "weak":
         player.applyDamageBoost(0.5, duration);
+        player.orbEffectEndTimes["weak"] = now + duration;
         break;
     }
   }

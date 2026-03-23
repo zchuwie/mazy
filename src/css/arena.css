@@ -648,3 +648,24 @@ body.is-fading-in .page-fade {
 .round-winner-banner.hide {
   animation: bannerSlideOut 300ms ease-in forwards;
 }
+
+/*=================== ORB DISPLAY - ICONS ================= */
+/* Container for 6 orbs: 2 rows x 3 columns */
+.hud-orb {
+  display: grid;
+  grid-template-columns: repeat(3, auto); /* 3 columns */
+  grid-auto-rows: auto; /* 2 rows will be auto-created */
+  gap: 8px 10px; /* row gap / column gap */
+  justify-content: center; /* center as a block */
+  align-content: center;
+  margin-top: 8px;
+}
+
+/* Individual orb image: bigger “button-like” size */
+.hud-orb .orb-icon {
+  width: 60px; /* adjust if you want even bigger/smaller */
+  height: 60px;
+  object-fit: contain;
+  image-rendering: pixelated; /* keeps retro look */
+  opacity: 0.95;
+}
