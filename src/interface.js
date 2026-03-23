@@ -73,6 +73,15 @@ export const musicTracks = [
     { name: 'Map 8', file: '../assets/audio/bgm/map/map-8-bgm.mp3' },
 ]
 
+export const orbSfx = {
+  speed:  '../assets/audio/sfx/speed.wav',
+  damage: '../assets/audio/sfx/damage.wav',
+  health: '../assets/audio/sfx/health.wav',
+  rapid:  '../assets/audio/sfx/rapid.wav',
+  slow:   '../assets/audio/sfx/slow.wav',
+  freeze: '../assets/audio/sfx/freeze.wav',
+};
+
 export const orbHudInactive = {
   speed:  '../assets/orbs/inactive/speed-inactive.png',
   damage: '../assets/orbs/inactive/damage-inactive.png',

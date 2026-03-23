@@ -21,6 +21,7 @@ import {
   mazeLayout,
   musicTracks,
   tankCharacters,
+  orbSfx, // <- SFX mapping from interface.js
 } from "./interface.js";
 import {
   renderArenaConfig,
@@ -128,11 +129,43 @@ const sketch = (p) => {
     }
   }
 
+  // ---- ORB SFX (SHORT ONE-SHOTS, PRELOADED) ----
+  // Filled during p.preload so first pickup has sound immediately.
+  const orbSfxState = {}; // { speed: { sound, failed }, ... }
+
+  function playOrbSfx(type) {
+    const state = orbSfxState[type];
+    if (!state || !state.sound || state.failed) return;
+    state.sound.play();
+  }
+
+  // Expose for orb.js without circular imports
+  // @ts-ignore
+  window.__mazyPlayOrbSfx = playOrbSfx;
+
   // --------- PRELOAD / MAP RENDERING ---------
 
   p.preload = () => {
-    // ONLY images/graphics here; music is loaded later and never blocks.
+    // Images / graphics
     preloadImages(p);
+
+    // Preload all orb SFX so the first pickup plays audio
+    for (const type in orbSfx) {
+      if (!Object.prototype.hasOwnProperty.call(orbSfx, type)) continue;
+      const path = orbSfx[type];
+      orbSfxState[type] = { sound: null, failed: false };
+
+      orbSfxState[type].sound = p.loadSound(
+        path,
+        (snd) => {
+          snd.setVolume(0.7); // adjust orb SFX volume here
+        },
+        (err) => {
+          console.error("Failed to preload orb SFX:", type, path, err);
+          orbSfxState[type].failed = true;
+        },
+      );
+    }
   };
 
   function renderMap(mapIndex) {

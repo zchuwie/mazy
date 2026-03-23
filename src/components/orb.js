@@ -1,3 +1,6 @@
+// src/components/orb.js
+console.log("Loaded Orb class from src/components/orb.js");
+
 export class Orb {
   constructor(p, x, y, orbData) {
     this.p = p;
@@ -71,7 +74,21 @@ export class Orb {
     const duration = 5000;
     console.log(`Applying effect: ${this.type} to player`);
 
-    // --- NEW: track effect end time per orb type for HUD + logic ---
+    // Play SFX for supported orb types, if main.js registered the helper
+    if (window.__mazyPlayOrbSfx) {
+      if (
+        this.type === "freeze" ||
+        this.type === "health" ||
+        this.type === "rapid" ||
+        this.type === "slow" ||
+        this.type === "speed" ||
+        this.type === "damage"
+      ) {
+        window.__mazyPlayOrbSfx(this.type);
+      }
+    }
+
+    // Track effect end time per orb type for HUD + logic
     if (!player.orbEffectEndTimes) {
       player.orbEffectEndTimes = {};
     }
@@ -87,9 +104,7 @@ export class Orb {
         player.orbEffectEndTimes["damage"] = now + duration;
         break;
       case "health":
-        // Health is instant; treat as a very short visual indicator if you want.
         player.heal(30);
-        // Example: show health orb for 1s
         player.orbEffectEndTimes["health"] = now + 1000;
         break;
       case "rapid":

@@ -9,10 +9,10 @@ import { tankCharacters } from "../interface.js";
  * Paths here are from arena.html (project root), so we use "./assets/...".
  */
 const previewPathsByName = {
-  "Tank Alpha": "../assets/characters/alpha/Tank-Alpha.png",
-  "Tank Bravo": "../assets/characters/bravo/Tank-Bravo.png",
-  "Tank Cobra": "../assets/characters/cobra/Tank-Cobra.png",
-  "Tank Delta": "../assets/characters/delta/Tank-Delta.png",
+  "Tank Alpha": "/assets/characters/alpha/Tank-Alpha.png",
+  "Tank Bravo": "/assets/characters/bravo/Tank-Bravo.png",
+  "Tank Cobra": "/assets/characters/cobra/Tank-Cobra.png",
+  "Tank Delta": "/assets/characters/delta/Tank-Delta.png",
 };
 
 /**
