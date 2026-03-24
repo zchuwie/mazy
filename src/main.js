@@ -52,6 +52,7 @@ const sketch = (p) => {
 
   // Countdown state
   let roundStarting = false;
+  let isFirstRoundOfMatch = true;
 
   // ---- MUSIC STATE (ASYNC / NON-BLOCKING) ----
   const bgmState = musicTracks.map(() => ({
@@ -316,10 +317,6 @@ const sketch = (p) => {
   function startRoundCountdown() {
     roundStarting = true;
     gamePaused = false; // ensure gameplay isn't paused instead
-
-    // Match timer starts after countdown finishes
-    gameState.matchStartMs = 0;
-    totalPausedMs = 0;
 
     const steps = ["3", "2", "1", "GO!"];
     const stepDurationMs = 800;
@@ -790,10 +787,10 @@ const sketch = (p) => {
     roundResetAt = 0;
     gameOverShown = false;
 
-    // Clear pause timing for the new round
+    // Ensure gameplay is unpaused for the new round, but
+    // keep accumulated paused time so the match timer is honest.
     gamePaused = false;
     pauseStartedAt = 0;
-    totalPausedMs = 0;
 
     const previousIndex = currentMapIndex;
     if (mazeLayout.length > 1) {
@@ -817,8 +814,11 @@ const sketch = (p) => {
 
     gameState.orbs = renderOrbSpawn(p, selectedMap, orbTypes);
 
-    // Start a countdown before the next round begins
-    startRoundCountdown();
+    // Countdown is only for the first round of a match.
+    if (isFirstRoundOfMatch) {
+      startRoundCountdown();
+      isFirstRoundOfMatch = false;
+    }
   }
 
   // --------- SETUP / DRAW ---------
@@ -904,7 +904,8 @@ const sketch = (p) => {
     gameOverUI = initGameOverUI();
     roundWinnerBanner = initRoundWinnerBanner();
 
-    // Start countdown for the very first round
+    // Start countdown for the very first round of this match
+    isFirstRoundOfMatch = false;
     startRoundCountdown();
   };
 
@@ -995,6 +996,9 @@ const sketch = (p) => {
 
             // @ts-ignore
             gameOverUI.hide();
+
+            // New match: first round should use countdown.
+            isFirstRoundOfMatch = true;
             resetRound();
           },
           menu: () => {
@@ -1023,6 +1027,9 @@ const sketch = (p) => {
 
         // @ts-ignore
         if (gameOverUI) gameOverUI.hide();
+
+        // New match via keyboard rematch: use countdown on first round.
+        isFirstRoundOfMatch = true;
         resetRound();
       }
       if (p.kb.presses("escape")) {
