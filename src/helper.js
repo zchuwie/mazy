@@ -75,10 +75,22 @@ export function wallsColliderSetup(p, hWalls, vWalls, borderWalls) {
 
 export function preloadImages(p) {
     for (let i = 0; i < tankCharacters.length; i++) {
-        const imagePath = typeof tankCharacters[i].image === 'string'
-            ? tankCharacters[i].image
-            : tankCharacters[i].imagePath;
-        tankCharacters[i].image = p.loadImage(imagePath);
+        const tank = tankCharacters[i];
+
+        const imagePath = typeof tank.image === 'string'
+            ? tank.image
+            : tank.imagePath;
+        tank.image = p.loadImage(imagePath);
+
+        // Optional shooting / destroyed sprite sheets for tanks that
+        // provide them (currently Tank Alpha only).
+        if (typeof tank.shootSheet === 'string') {
+            tank.shootSheet = p.loadImage(tank.shootSheet);
+        }
+
+        if (typeof tank.destroySheet === 'string') {
+            tank.destroySheet = p.loadImage(tank.destroySheet);
+        }
     }
 
     for (let i = 0; i < orbTypes.length; i++) {

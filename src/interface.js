@@ -2,6 +2,10 @@ export const tankCharacters = [
     {
         name: 'Tank Alpha',
         image: '../assets/characters/alpha/Tank-Alpha.png',
+        shootSheet: '../assets/characters/alpha/remove.png',
+        shootFrames: 8,
+        destroySheet: '../assets/characters/alpha/inangyarn.png',
+        destroyFrames: 8,
         baseSpeed: 5,
         shootCooldown: 400,
         baseDamage: 18,
@@ -15,6 +19,8 @@ export const tankCharacters = [
     {
         name: 'Tank Bravo',
         image: '../assets/characters/bravo/Tank-Bravo.png',
+        destroySheet: '../assets/characters/bravo/bravo-destroyed-sprite.png',
+        destroyFrames: 8,
         baseSpeed: 4,
         shootCooldown: 500,
         baseDamage: 9,
@@ -28,6 +34,8 @@ export const tankCharacters = [
     {
         name: 'Tank Cobra',
         image: '../assets/characters/cobra/Tank-Cobra.png',
+        destroySheet: '../assets/characters/cobra/cobra-destroyed-sprite.png',
+        destroyFrames: 8,
         baseSpeed: 6.5,
         shootCooldown: 320,
         baseDamage: 15,
@@ -41,6 +49,8 @@ export const tankCharacters = [
     {
         name: 'Tank Delta',
         image: '../assets/characters/delta/Tank-Delta.png',
+        destroySheet: '../assets/characters/delta/delta-destroyed-sprite.png',
+        destroyFrames: 8,
         baseSpeed: 4.5,
         shootCooldown: 880,
         baseDamage: 32,

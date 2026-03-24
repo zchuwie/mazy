@@ -165,14 +165,9 @@ const sketch = (p) => {
   function resolveTrackIndex(mapIndex) {
     if (!musicTracks || musicTracks.length === 0) return -1;
 
-    const clamped = Math.max(0, Math.min(mapIndex, musicTracks.length - 1));
-    if (mapIndex !== clamped && !warnedTrackClamp) {
-      console.warn(
-        "Map index exceeds available BGM tracks. Reusing last available track.",
-      );
-      warnedTrackClamp = true;
-    }
-    return clamped;
+    // Always use the first track (MAP 1) for arena BGM,
+    // regardless of which map is selected.
+    return 0;
   }
 
   function playMapMusic(mapIndex) {
@@ -1152,6 +1147,18 @@ const sketch = (p) => {
     }
 
     if (roundOver) {
+      // While the round winner banner is showing, keep advancing
+      // tank animations (e.g. destroyed explosions) but skip
+      // input/movement and other gameplay.
+      for (const player of gameState.players) {
+        if (player && typeof player.tickAnimationOnly === "function") {
+          player.tickAnimationOnly();
+        }
+      }
+      if (gameState.bot && typeof gameState.bot.tickAnimationOnly === "function") {
+        gameState.bot.tickAnimationOnly();
+      }
+
       if (p.millis() >= roundResetAt) {
         resetRound();
       }

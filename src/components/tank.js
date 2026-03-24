@@ -21,6 +21,27 @@ export class Tank {
       }
     }
 
+    // Cache default image transform so we can reapply it
+    // when swapping animation frames.
+    this._baseImage = this.sprite.image || null;
+    this._imageScale = this.sprite.image?.scale ?? 0.1;
+    this._imageOffsetY = this.sprite.image?.offset?.y ?? -10;
+
+    // Optional per-character animation sheets (only defined for
+    // tanks that provide them, e.g. Tank Alpha).
+    this.shootSheet = character?.shootSheet || null;
+    this.destroySheet = character?.destroySheet || null;
+    this.shootFrameCount = character?.shootFrames || 0;
+    this.destroyFrameCount = character?.destroyFrames || 0;
+
+    this._shootFrames = null;
+    this._destroyFrames = null;
+
+    this._animState = "idle"; // "idle" | "shoot" | "dead"
+    this._animFrameIndex = 0;
+    this._animLastFrameTime = 0;
+    this._animFrameDuration = 60; // ms per frame (overridden per anim)
+
     this.sprite.rotation = 0;
     this.sprite.rotationLock = true;
     this.sprite.friction = 0;
@@ -89,15 +110,141 @@ export class Tank {
     this.orbEffectEndTimes = {};
 
     this.lastShotTime = 0;
+
+    // Reset animation state (used when starting a new round).
+    this._animState = "idle";
+    this._animFrameIndex = 0;
+    this._animLastFrameTime = 0;
+
+    if (this._baseImage) {
+      this.sprite.image = this._baseImage;
+      this._applyImageTransform();
+    }
+  }
+
+  _applyImageTransform() {
+    if (!this.sprite.image) return;
+    this.sprite.image.scale = this._imageScale;
+    if (!this.sprite.image.offset) this.sprite.image.offset = { x: 0, y: 0 };
+    this.sprite.image.offset.y = this._imageOffsetY;
+  }
+
+  _ensureShootFrames() {
+    if (this._shootFrames || !this.shootSheet || this.shootFrameCount <= 0) {
+      return;
+    }
+
+    const frameW = this.shootSheet.width / this.shootFrameCount;
+    const frameH = this.shootSheet.height;
+    this._shootFrames = [];
+    for (let i = 0; i < this.shootFrameCount; i++) {
+      const frame = this.shootSheet.get(frameW * i, 0, frameW, frameH);
+      this._shootFrames.push(frame);
+    }
+  }
+
+  _ensureDestroyFrames() {
+    if (
+      this._destroyFrames ||
+      !this.destroySheet ||
+      this.destroyFrameCount <= 0
+    ) {
+      return;
+    }
+
+    const frameW = this.destroySheet.width / this.destroyFrameCount;
+    const frameH = this.destroySheet.height;
+    this._destroyFrames = [];
+    for (let i = 0; i < this.destroyFrameCount; i++) {
+      const frame = this.destroySheet.get(frameW * i, 0, frameW, frameH);
+      this._destroyFrames.push(frame);
+    }
+  }
+
+  _startShootAnimation() {
+    if (!this.shootSheet || this.health <= 0) return;
+    this._ensureShootFrames();
+    if (!this._shootFrames || this._shootFrames.length === 0) return;
+
+    this._animState = "shoot";
+    this._animFrameIndex = 0;
+    this._animFrameDuration = 60;
+    this._animLastFrameTime = this.p.millis();
+    this.sprite.image = this._shootFrames[0];
+    this._applyImageTransform();
+  }
+
+  _startDestroyedAnimation() {
+    if (!this.destroySheet) return;
+    this._ensureDestroyFrames();
+    if (!this._destroyFrames || this._destroyFrames.length === 0) return;
+
+    this._animState = "dead";
+    this._animFrameIndex = 0;
+    this._animFrameDuration = 90;
+    this._animLastFrameTime = this.p.millis();
+    this.sprite.image = this._destroyFrames[0];
+    this._applyImageTransform();
+  }
+
+  _updateAnimation() {
+    const now = this.p.millis();
+
+    if (this._animState === "shoot") {
+      if (!this._shootFrames || this._shootFrames.length === 0) {
+        this._animState = "idle";
+        this.sprite.image = this._baseImage;
+        this._applyImageTransform();
+        return;
+      }
+
+      if (now - this._animLastFrameTime >= this._animFrameDuration) {
+        this._animLastFrameTime = now;
+        this._animFrameIndex += 1;
+        if (this._animFrameIndex >= this._shootFrames.length) {
+          this._animState = "idle";
+          this.sprite.image = this._baseImage;
+          this._applyImageTransform();
+          return;
+        }
+      }
+
+      this.sprite.image = this._shootFrames[this._animFrameIndex];
+      this._applyImageTransform();
+    } else if (this._animState === "dead") {
+      if (!this._destroyFrames || this._destroyFrames.length === 0) return;
+
+      if (now - this._animLastFrameTime >= this._animFrameDuration) {
+        this._animLastFrameTime = now;
+        if (this._animFrameIndex < this._destroyFrames.length - 1) {
+          this._animFrameIndex += 1;
+        }
+      }
+
+      this.sprite.image = this._destroyFrames[this._animFrameIndex];
+      this._applyImageTransform();
+    }
+  }
+
+  // Public helper so game loop can advance animations (e.g. destroyed
+  // explosions) even during round-over states without processing input
+  // or movement.
+  tickAnimationOnly() {
+    this._updateAnimation();
   }
 
   update() {
     this.updateEffects();
+
+    // Run sprite animation (shooting / destroyed) every frame.
+    this._updateAnimation();
+
+    const isDead = this.health <= 0;
     const isFrozen = this.activeEffects.some(
       (effect) => effect.type === "speed" && effect.value === 0,
     );
 
-    if (isFrozen) {
+    if (isDead || isFrozen) {
       this.sprite.speed = 0;
       this.sprite.vel.x = 0;
       this.sprite.vel.y = 0;
@@ -152,6 +299,7 @@ export class Tank {
 
   updateEffects() {
     const currentTime = this.p.millis();
+    const prevHealth = this.health;
 
     this.activeEffects = this.activeEffects.filter((effect) => {
       if (currentTime >= effect.endTime) {
@@ -167,10 +315,22 @@ export class Tank {
         !this.lastBurnDamageTime ||
         currentTime - this.lastBurnDamageTime >= 100
       ) {
+        const before = this.health;
         this.health -= this.burningDamagePerTick;
         if (this.health < 0) this.health = 0;
         this.lastBurnDamageTime = currentTime;
         log(`Burning damage: ${this.burningDamagePerTick} HP`);
+
+        // If burning alone killed the tank (not a bullet), start
+        // the destroyed animation and SFX just like a direct hit.
+        if (before > 0 && this.health <= 0) {
+          this._startDestroyedAnimation();
+          // @ts-ignore
+          if (window.__mazyPlayDestroyedSfx) {
+            // @ts-ignore
+            window.__mazyPlayDestroyedSfx();
+          }
+        }
       }
     } else if (this.burningEndTime && currentTime >= this.burningEndTime) {
       this.burningEndTime = null;
@@ -297,6 +457,8 @@ export class Tank {
         this.fireLaserBeam();
       } else {
         this.createBullet();
+        // Optional muzzle-flash shooting animation (e.g. Tank Alpha)
+        this._startShootAnimation();
       }
       this.lastShotTime = currentTime;
 
@@ -372,6 +534,9 @@ export class Tank {
 
     // Death SFX (only when crossing from alive to dead)
     if (this.health <= 0 && prevHealth > 0) {
+      // Trigger destroyed animation if this tank has one.
+      this._startDestroyedAnimation();
+
       // @ts-ignore
       if (window.__mazyPlayDestroyedSfx) {
         // @ts-ignore
