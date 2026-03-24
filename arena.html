@@ -173,10 +173,10 @@
             <div class="control-label-text">MOVEMENT</div>
             <!-- Move Controls -->
             <div class="control-item">
-              <span class="control-key">←</span>
-              <span class="control-key">↑</span>
-              <span class="control-key">→</span>
-              <span class="control-key">↓</span>
+              <span class="control-key">↼ </span>
+              <span class="control-key">↾</span>
+              <span class="control-key">⇀</span>
+              <span class="control-key">⇂</span>
             </div>
 
             <!-- Shoot Label -->
@@ -256,8 +256,8 @@
     </div>
 
     <!-- ================= PAUSE MENU ================= -->
-    <div id="pauseModal" class="pause-modal" style="display: none">
-      <div class="pause-container">
+    <div id="pauseModal" class="modal" style="display: none">
+      <div class="modal-card pause-container">
         <div class="pause-title">GAME PAUSED</div>
 
         <div class="pause-menu">
@@ -268,6 +268,214 @@
         </div>
 
         <div class="pause-hint">Press ESC to Resume</div>
+      </div>
+    </div>
+
+    <!-- ================= OPTIONS POPUP (ARENA) ================= -->
+    <div id="optionsModal" class="modal" style="display: none">
+      <div
+        class="modal-card"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="optionsTitle"
+      >
+        <div class="modal-header">
+          <h1
+            id="optionsTitle"
+            class="tutorial-title"
+            style="font-size: 1.6rem"
+          >
+            OPTIONS
+          </h1>
+          <button id="closeOptions" class="icon-btn" aria-label="Close options">
+            ✕
+          </button>
+        </div>
+
+        <div class="options-body">
+          <div class="option-row">
+            <p class="option-label">MUSIC</p>
+            <input
+              id="musicVolume"
+              class="pixel-slider"
+              type="range"
+              min="0"
+              max="100"
+              value="80"
+            />
+            <p id="musicValue" class="option-value">80</p>
+          </div>
+
+          <div class="option-row">
+            <p class="option-label">SFX</p>
+            <input
+              id="sfxVolume"
+              class="pixel-slider"
+              type="range"
+              min="0"
+              max="100"
+              value="70"
+            />
+            <p id="sfxValue" class="option-value">70</p>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button id="closeOptionsBottom" class="menu-btn">DONE</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= TUTORIAL POPUP (ARENA) ================= -->
+    <div id="tutorialModal" class="modal" style="display: none">
+      <div
+        class="modal-card"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="tutorialTitle"
+      >
+        <div class="modal-header">
+          <h1
+            id="tutorialTitle"
+            class="tutorial-title"
+            style="font-size: 1.6rem"
+          >
+            TUTORIAL
+          </h1>
+          <button
+            id="closeTutorial"
+            class="icon-btn"
+            aria-label="Close tutorial"
+          >
+            ✕
+          </button>
+        </div>
+
+        <div class="tutorial-body">
+          <div class="progress-dots" id="tutorialDots">
+            <span class="dot active"></span>
+            <span class="dot"></span>
+            <span class="dot"></span>
+            <span class="dot"></span>
+            <span class="dot"></span>
+            <span class="dot"></span>
+          </div>
+
+          <div class="slide-viewport">
+            <div class="slides" id="tutorialSlides">
+              <section class="slide active" data-step="1">
+                <h2 class="slide-title">MOVEMENT</h2>
+                <p class="slide-text">
+                  Use <b>W A S D</b> (Player 1) to move around the maze and
+                  avoid getting cornered.
+                </p>
+                <div class="slide-art">
+                  <div class="art-box movement-art tutorial-art">
+                    <img
+                      src="./assets/tutorial image/movement.svg"
+                      alt="Movement controls"
+                      class="movement-svg"
+                    />
+                  </div>
+                </div>
+              </section>
+
+              <section class="slide" data-step="2">
+                <h2 class="slide-title">SHOOT</h2>
+                <p class="slide-text">
+                  Press <b>SPACE</b> to fire. Your bullets can bounce, so use
+                  walls to hit enemies.
+                </p>
+                <div class="slide-art">
+                  <div class="art-box tutorial-art">
+                    <img
+                      src="./assets/tutorial image/shoot.svg"
+                      alt="Shoot controls"
+                      class="movement-svg"
+                    />
+                  </div>
+                </div>
+              </section>
+
+              <section class="slide" data-step="3">
+                <h2 class="slide-title">PVP</h2>
+                <p class="slide-text">
+                  Player 2 uses <b>ARROW KEYS</b> to move and <b>ENTER</b> to
+                  shoot.
+                </p>
+                <div class="slide-art">
+                  <div class="art-box tutorial-art">
+                    <img
+                      src="./assets/tutorial image/pvp.svg"
+                      alt="PVP controls"
+                      class="movement-svg"
+                    />
+                  </div>
+                </div>
+              </section>
+
+              <section class="slide" data-step="4">
+                <h2 class="slide-title">ORB</h2>
+                <p class="slide-text">
+                  Get Orb to gain temporary buffs to help you turn the tide of
+                  battle. Orb spawns randomly in the maze
+                </p>
+                <div class="slide-art">
+                  <div class="art-box tutorial-art">
+                    <img
+                      src="./assets/tutorial image/special-orb.svg"
+                      alt="Special orb"
+                      class="movement-svg"
+                    />
+                  </div>
+                </div>
+              </section>
+
+              <section class="slide" data-step="5">
+                <h2 class="slide-title">ROUNDS</h2>
+                <p class="slide-text">
+                  Each time a player destroys a tank, they earn one point for
+                  that round.
+                </p>
+                <div class="slide-art">
+                  <div class="art-box tutorial-art">
+                    <img
+                      src="./assets/tutorial image/round.svg"
+                      alt="Rounds progress"
+                      class="movement-svg"
+                    />
+                  </div>
+                </div>
+              </section>
+
+              <section class="slide" data-step="5">
+                <h2 class="slide-title">WIN</h2>
+                <p class="slide-text">
+                  Survive longer and outplay your opponent and win the game.
+                </p>
+                <div class="slide-art">
+                  <div class="art-box tutorial-art">
+                    <img
+                      src="./assets/tutorial image/winner.svg"
+                      alt="Winner trophy"
+                      class="movement-svg"
+                    />
+                  </div>
+                </div>
+              </section>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button id="prevTutorial" class="menu-btn">◀ LEFT</button>
+
+          <div class="step-label" id="tutorialStepLabel">
+            <span id="currentStep">1</span> / <span id="totalSteps">4</span>
+          </div>
+
+          <button id="nextTutorial" class="menu-btn">RIGHT ▶</button>
+        </div>
       </div>
     </div>
 
@@ -287,6 +495,62 @@
         const pauseMainMenuBtn = document.getElementById("pauseMainMenuBtn");
         const pauseOptionsBtn = document.getElementById("pauseOptionsBtn");
         const pauseTutorialBtn = document.getElementById("pauseTutorialBtn");
+
+        // Tutorial state (arena)
+        let tutorialStepIndex = 0;
+        let tutorialSlides = [];
+        let tutorialDots = [];
+
+        function renderTutorial() {
+          if (!tutorialSlides.length || !tutorialDots.length) return;
+
+          tutorialSlides.forEach((s, i) => {
+            if (s instanceof HTMLElement) {
+              s.classList.toggle("active", i === tutorialStepIndex);
+            }
+          });
+
+          tutorialDots.forEach((d, i) => {
+            if (d instanceof HTMLElement) {
+              d.classList.toggle("active", i === tutorialStepIndex);
+            }
+          });
+
+          const currentStepEl = document.getElementById("currentStep");
+          const totalStepsEl = document.getElementById("totalSteps");
+
+          if (currentStepEl)
+            currentStepEl.textContent = String(tutorialStepIndex + 1);
+          if (totalStepsEl)
+            totalStepsEl.textContent = String(tutorialSlides.length);
+
+          const prevBtn = document.getElementById("prevTutorial");
+          const nextBtn = document.getElementById("nextTutorial");
+
+          if (prevBtn instanceof HTMLButtonElement) {
+            prevBtn.disabled = tutorialStepIndex === 0;
+            prevBtn.style.opacity = prevBtn.disabled ? "0.5" : "1";
+          }
+
+          if (nextBtn instanceof HTMLButtonElement) {
+            nextBtn.disabled = tutorialStepIndex === tutorialSlides.length - 1;
+            nextBtn.style.opacity = nextBtn.disabled ? "0.5" : "1";
+          }
+        }
+
+        function openTutorial() {
+          const modal = document.getElementById("tutorialModal");
+          if (!modal) return;
+          modal.style.display = "flex";
+          tutorialStepIndex = 0;
+          renderTutorial();
+        }
+
+        function closeTutorialModal() {
+          const modal = document.getElementById("tutorialModal");
+          if (!modal) return;
+          modal.style.display = "none";
+        }
 
         // --- PAUSE MENU HELPERS (HTML side) ---
         function showPauseModal() {
@@ -318,17 +582,113 @@
           });
         }
 
-        // Options: placeholder for now
+        // Options: open in-arena options modal
+        const optionsModal = document.getElementById("optionsModal");
+        const closeOptions = document.getElementById("closeOptions");
+        const closeOptionsBottom =
+          document.getElementById("closeOptionsBottom");
+
         if (pauseOptionsBtn) {
           pauseOptionsBtn.addEventListener("click", () => {
-            alert("Options are only available from the main menu for now.");
+            if (optionsModal) optionsModal.style.display = "flex";
           });
         }
 
-        // Tutorial: placeholder for now
+        function closeOptionsModal() {
+          if (optionsModal) optionsModal.style.display = "none";
+        }
+
+        if (closeOptions) {
+          closeOptions.addEventListener("click", () => {
+            closeOptionsModal();
+          });
+        }
+
+        if (closeOptionsBottom) {
+          closeOptionsBottom.addEventListener("click", () => {
+            closeOptionsModal();
+          });
+        }
+
+        if (optionsModal) {
+          optionsModal.addEventListener("click", (e) => {
+            if (e.target === optionsModal) closeOptionsModal();
+          });
+        }
+
+        // Options slider labels (local to arena)
+        const musicVolume = document.getElementById("musicVolume");
+        const sfxVolume = document.getElementById("sfxVolume");
+        const musicValue = document.getElementById("musicValue");
+        const sfxValue = document.getElementById("sfxValue");
+
+        function syncArenaOptionsUI() {
+          if (musicVolume instanceof HTMLInputElement && musicValue) {
+            musicValue.textContent = musicVolume.value;
+          }
+          if (sfxVolume instanceof HTMLInputElement && sfxValue) {
+            sfxValue.textContent = sfxVolume.value;
+          }
+        }
+
+        syncArenaOptionsUI();
+
+        if (musicVolume instanceof HTMLInputElement) {
+          musicVolume.addEventListener("input", () => {
+            if (musicValue) musicValue.textContent = musicVolume.value;
+          });
+        }
+
+        if (sfxVolume instanceof HTMLInputElement) {
+          sfxVolume.addEventListener("input", () => {
+            if (sfxValue) sfxValue.textContent = sfxVolume.value;
+          });
+        }
+
+        // Tutorial from pause -> open in-arena tutorial modal
         if (pauseTutorialBtn) {
           pauseTutorialBtn.addEventListener("click", () => {
-            alert("Tutorial is only available from the main menu for now.");
+            openTutorial();
+          });
+        }
+
+        // Tutorial controls wiring
+        tutorialSlides = Array.from(
+          document.querySelectorAll("#tutorialSlides .slide"),
+        );
+        tutorialDots = Array.from(
+          document.querySelectorAll("#tutorialDots .dot"),
+        );
+
+        const closeTutorial = document.getElementById("closeTutorial");
+        const prevTutorial = document.getElementById("prevTutorial");
+        const nextTutorial = document.getElementById("nextTutorial");
+        const tutorialModal = document.getElementById("tutorialModal");
+
+        if (closeTutorial) {
+          closeTutorial.addEventListener("click", () => {
+            closeTutorialModal();
+          });
+        }
+
+        if (prevTutorial) {
+          prevTutorial.addEventListener("click", () => {
+            if (tutorialStepIndex > 0) tutorialStepIndex--;
+            renderTutorial();
+          });
+        }
+
+        if (nextTutorial) {
+          nextTutorial.addEventListener("click", () => {
+            if (tutorialStepIndex < tutorialSlides.length - 1)
+              tutorialStepIndex++;
+            renderTutorial();
+          });
+        }
+
+        if (tutorialModal) {
+          tutorialModal.addEventListener("click", (e) => {
+            if (e.target === tutorialModal) closeTutorialModal();
           });
         }
 
@@ -345,6 +705,26 @@
 
         document.getElementById("menuBtn").addEventListener("click", () => {
           window.gameOverActions?.menu?.();
+        });
+        // Tutorial keyboard controls (ArrowLeft/ArrowRight/Escape)
+        document.addEventListener("keydown", (e) => {
+          const modal = document.getElementById("tutorialModal");
+          if (!modal || modal.style.display !== "flex") return;
+
+          if (e.key === "Escape") {
+            closeTutorialModal();
+          }
+
+          if (e.key === "ArrowLeft") {
+            if (tutorialStepIndex > 0) tutorialStepIndex--;
+            renderTutorial();
+          }
+
+          if (e.key === "ArrowRight") {
+            if (tutorialStepIndex < tutorialSlides.length - 1)
+              tutorialStepIndex++;
+            renderTutorial();
+          }
         });
       });
     </script>
