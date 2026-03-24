@@ -1,4 +1,4 @@
-//tank.js
+// src/components/tank.js
 
 const DEBUG = false;
 const log = (...args) => DEBUG && console.log(...args);
@@ -94,14 +94,14 @@ export class Tank {
   update() {
     this.updateEffects();
     const isFrozen = this.activeEffects.some(
-      (effect) => effect.type === "speed" && effect.value === 0
+      (effect) => effect.type === "speed" && effect.value === 0,
     );
 
     if (isFrozen) {
       this.sprite.speed = 0;
       this.sprite.vel.x = 0;
       this.sprite.vel.y = 0;
-      return; 
+      return;
     }
 
     if (this.p.kb.pressing(this.controls.left)) {
@@ -273,7 +273,7 @@ export class Tank {
     bullet.direction = direction;
     bullet.speed = this.bulletSpeed;
     bullet.diameter = this.bulletDiameter;
-    bullet.life = this.bulletLife; // calculateDamage reads bullet.life (fixed in helper.js)
+    bullet.life = this.bulletLife; // calculateDamage reads bullet.life
     bullet._createdAt = this.p.millis();
     bullet._startX = x;
     bullet._startY = y;
@@ -281,7 +281,7 @@ export class Tank {
     bullet._shooter = this;
 
     log(
-      `${this.bulletType} bullet | dmg: ${bullet._damage} | spd: ${bullet.speed} | life: ${bullet.life}`
+      `${this.bulletType} bullet | dmg: ${bullet._damage} | spd: ${bullet.speed} | life: ${bullet.life}`,
     );
     return bullet;
   }
@@ -291,12 +291,25 @@ export class Tank {
     const effectiveCooldown = this.shootCooldown * this.cooldownMultiplier;
 
     if (currentTime - this.lastShotTime >= effectiveCooldown) {
-      if (this.bulletType === "laser") {
+      const isLaser = this.bulletType === "laser";
+
+      if (isLaser) {
         this.fireLaserBeam();
       } else {
         this.createBullet();
       }
       this.lastShotTime = currentTime;
+
+      // Fire SFX: different sound for laser vs normal tanks.
+      // @ts-ignore
+      if (isLaser && window.__mazyPlayFireSfxLaser) {
+        // @ts-ignore
+        window.__mazyPlayFireSfxLaser();
+      // @ts-ignore
+      } else if (!isLaser && window.__mazyPlayFireSfxNormal) {
+        // @ts-ignore
+        window.__mazyPlayFireSfxNormal();
+      }
     }
   }
 
@@ -327,25 +340,44 @@ export class Tank {
     laserBullet._maxPathLength = 50;
 
     log(
-      `Laser fired | dmg: ${laserBullet._damage} | spd: ${laserBullet.speed} | life: ${laserBullet.life}`
+      `Laser fired | dmg: ${laserBullet._damage} | spd: ${laserBullet.speed} | life: ${laserBullet.life}`,
     );
   }
+
   playerHit(bullet, damage) {
     if (bullet && bullet.remove) bullet.remove();
 
     const rawDamage = damage ?? bullet?._damage ?? 20;
     const armor = this.character?.armor ?? 0;
     const finalDamage = Math.round(
-      rawDamage * (1 - Math.max(0, Math.min(1, armor)))
+      rawDamage * (1 - Math.max(0, Math.min(1, armor))),
     );
+
+    const prevHealth = this.health;
 
     log(
       `Player hit | raw: ${rawDamage} | armor: ${armor} | final: ${finalDamage} | ` +
-      `HP: ${this.health} → ${Math.max(0, this.health - finalDamage)}`
+        `HP: ${this.health} → ${Math.max(0, this.health - finalDamage)}`,
     );
 
     this.health -= finalDamage;
     if (this.health < 0) this.health = 0;
+
+    // Impact / damage SFX
+    // @ts-ignore
+    if (window.__mazyPlayHitSfx) {
+      // @ts-ignore
+      window.__mazyPlayHitSfx();
+    }
+
+    // Death SFX (only when crossing from alive to dead)
+    if (this.health <= 0 && prevHealth > 0) {
+      // @ts-ignore
+      if (window.__mazyPlayDestroyedSfx) {
+        // @ts-ignore
+        window.__mazyPlayDestroyedSfx();
+      }
+    }
   }
 
   isPlayerDead() {

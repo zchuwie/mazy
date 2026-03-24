@@ -1,5 +1,3 @@
-//interface.js
-
 export const tankCharacters = [
     {
         name: 'Tank Alpha',
@@ -55,6 +53,8 @@ export const tankCharacters = [
     }
 ];
 
+
+
 export const orbTypes = [
     { name: 'speed', image: '../assets/orbs/speed.png' },
     { name: 'damage', image: '../assets/orbs/damage.png' },
@@ -92,6 +92,8 @@ export const orbHudInactive = {
   slow:   '../assets/orbs/inactive/slow-inactive.png',
   freeze: '../assets/orbs/inactive/freeze-inactive.png'
 };
+
+
 
 export const mazeLayout = [
     [

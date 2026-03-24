@@ -40,8 +40,7 @@ const sketch = (p) => {
   let gameOverUI = null;
   let roundWinnerBanner = null;
 
-  // BUG FIX: guard flag so gameOverUI.show() is only called ONCE per
-  // match-over event, not on every draw() frame (~60x/s).
+  // Guard so gameOverUI.show() is only called once per match-over.
   let gameOverShown = false;
 
   // ---- MUSIC STATE (ASYNC / NON-BLOCKING) ----
@@ -52,6 +51,16 @@ const sketch = (p) => {
   }));
   let currentMusic = null;
   let warnedTrackClamp = false;
+
+  // ---- CORE COMBAT SFX (NORMAL SHOT / LASER SHOT / HIT / DESTROYED) ----
+  let fireSfxNormal = null;
+  let fireSfxLaser = null;
+  let hitSfx = null;
+  let destroyedSfx = null;
+
+  // ---- GAME OVER AUDIO ----
+  let gameOverAnnounce = null; // short "Game Over" VO / sting
+  let gameOverMusic = null; // looped game-over track
 
   let gameState = {
     players: [],
@@ -121,8 +130,6 @@ const sketch = (p) => {
     );
   }
 
-  // BUG FIX: unified volume constant so both the immediate-play path and the
-  // draw()-poll path use the same value. Previously 0.1 vs 0.6.
   const BGM_VOLUME = 0.4;
 
   function resolveTrackIndex(mapIndex) {
@@ -167,14 +174,75 @@ const sketch = (p) => {
     state.sound.play();
   }
 
+  // Expose orb SFX helper globally for orb.js
   // @ts-ignore
   window.__mazyPlayOrbSfx = playOrbSfx;
+
+  // ---- COMBAT SFX HELPERS (NORMAL SHOT / LASER SHOT / HIT / DESTROYED) ----
+
+  function playFireSfxNormal() {
+    if (fireSfxNormal && fireSfxNormal.isLoaded && fireSfxNormal.isLoaded()) {
+      fireSfxNormal.play();
+    }
+  }
+
+  function playFireSfxLaser() {
+    if (fireSfxLaser && fireSfxLaser.isLoaded && fireSfxLaser.isLoaded()) {
+      fireSfxLaser.play();
+    }
+  }
+
+  function playHitSfx() {
+    if (hitSfx && hitSfx.isLoaded && hitSfx.isLoaded()) hitSfx.play();
+  }
+
+  function playDestroyedSfx() {
+    if (destroyedSfx && destroyedSfx.isLoaded && destroyedSfx.isLoaded()) {
+      destroyedSfx.play();
+    }
+  }
+
+  // Game over audio helpers
+  function playGameOverAudio() {
+    // Stop current map music first
+    stopCurrentMusic();
+
+    if (gameOverAnnounce && gameOverAnnounce.isLoaded()) {
+      gameOverAnnounce.play();
+    }
+
+    if (gameOverMusic && gameOverMusic.isLoaded()) {
+      // small delay so the announcement isn't buried
+      const delay = gameOverAnnounce ? 0.6 : 0;
+      gameOverMusic.stop();
+      gameOverMusic.setLoop(true);
+      gameOverMusic.setVolume(0.8);
+      gameOverMusic.play(delay);
+    }
+  }
+
+  function stopGameOverMusic() {
+    if (gameOverMusic && gameOverMusic.isPlaying()) {
+      gameOverMusic.stop();
+    }
+  }
+
+  // Expose combat SFX helpers globally so tank.js can call them
+  // @ts-ignore
+  window.__mazyPlayFireSfxNormal = playFireSfxNormal;
+  // @ts-ignore
+  window.__mazyPlayFireSfxLaser = playFireSfxLaser;
+  // @ts-ignore
+  window.__mazyPlayHitSfx = playHitSfx;
+  // @ts-ignore
+  window.__mazyPlayDestroyedSfx = playDestroyedSfx;
 
   // --------- PRELOAD / MAP RENDERING ---------
 
   p.preload = () => {
     preloadImages(p);
 
+    // Preload orb SFX
     for (const type in orbSfx) {
       if (!Object.prototype.hasOwnProperty.call(orbSfx, type)) continue;
       const path = orbSfx[type];
@@ -191,6 +259,50 @@ const sketch = (p) => {
         },
       );
     }
+
+    // === CORE COMBAT SFX ===
+    // Normal shot (Alpha / Bravo / Cobra, etc.)
+    fireSfxNormal = p.loadSound(
+      "/assets/audio/sfx/pop.mp3",
+      (snd) => snd.setVolume(0.7),
+      (err) => console.error("Failed to load normal shot SFX", err),
+    );
+
+    // Laser shot (Delta)
+    fireSfxLaser = p.loadSound(
+      "/assets/audio/sfx/laser-shot.mp3", // change extension if needed
+      (snd) => snd.setVolume(0.8),
+      (err) => console.error("Failed to load laser-shot.mp3", err),
+    );
+
+    hitSfx = p.loadSound(
+      "/assets/audio/sfx/hit.wav",
+      (snd) => snd.setVolume(0.6),
+      (err) => console.error("Failed to load hit.wav", err),
+    );
+
+    destroyedSfx = p.loadSound(
+      "/assets/audio/sfx/destroyed.wav",
+      (snd) => snd.setVolume(0.8),
+      (err) => console.error("Failed to load destroyed.wav", err),
+    );
+
+    // === GAME OVER AUDIO ===
+    gameOverAnnounce = p.loadSound(
+      "/assets/audio/bgm/game-over-announcement.wav",
+      (snd) => snd.setVolume(1.0),
+      (err) =>
+        console.error("Failed to load game-over-announcement.wav", err),
+    );
+
+    gameOverMusic = p.loadSound(
+      "/assets/audio/bgm/game-over.mp3",
+      (snd) => {
+        snd.setVolume(0.8);
+        snd.setLoop(true);
+      },
+      (err) => console.error("Failed to load game-over.mp3", err),
+    );
   };
 
   function renderMap(mapIndex) {
@@ -236,7 +348,6 @@ const sketch = (p) => {
 
     if (points.length < count) return null;
 
-    // Keep spawn points in walkable hallways and away from wall colliders.
     const SPAWN_TANK_DIAMETER = 45;
     const MIN_SPAWN_GAP = 120;
 
@@ -341,7 +452,6 @@ const sketch = (p) => {
       const inner = 26 + pulse * 10;
       const core = 10 + pulse * 6;
 
-      // Vibrant neon magenta to make spawn points instantly noticeable.
       p.noFill();
       p.stroke(255, 0, 180, alpha);
       p.circle(pt.x, pt.y, outer);
@@ -556,9 +666,6 @@ const sketch = (p) => {
   function resetRound() {
     roundOver = false;
     roundResetAt = 0;
-
-    // BUG FIX: reset the gameOver guard so the modal can re-show
-    // if the player triggers another match-over.
     gameOverShown = false;
 
     const previousIndex = currentMapIndex;
@@ -670,16 +777,18 @@ const sketch = (p) => {
   p.draw = () => {
     p.background(220);
 
-    // Poll: start music once the async load finishes (if it wasn't ready at map load time)
-    if (!currentMusic && musicTracks.length > 0) {
-      const trackIndex = resolveTrackIndex(currentMapIndex);
-      if (trackIndex >= 0) {
-        const state = bgmState[trackIndex];
-        // BUG FIX: use the same BGM_VOLUME constant as playMapMusic()
-        if (state && state.sound && !state.sound.isPlaying()) {
-          state.sound.setVolume(BGM_VOLUME);
-          state.sound.loop();
-          currentMusic = state.sound;
+    // Poll: start music once async load finishes.
+    // Only while match is active and not in round reset.
+    if (!gameState.matchOver && !roundOver && musicTracks.length > 0) {
+      if (!currentMusic) {
+        const trackIndex = resolveTrackIndex(currentMapIndex);
+        if (trackIndex >= 0) {
+          const state = bgmState[trackIndex];
+          if (state && state.sound && !state.sound.isPlaying()) {
+            state.sound.setVolume(BGM_VOLUME);
+            state.sound.loop();
+            currentMusic = state.sound;
+          }
         }
       }
     }
@@ -695,7 +804,7 @@ const sketch = (p) => {
       }
     }
 
-    // Update HTML HUD (timer + bars)
+    // Update HTML HUD
     let remainingSeconds = 0;
     if (gameState.matchDurationSeconds > 0) {
       const elapsedSeconds = Math.floor(
@@ -718,8 +827,15 @@ const sketch = (p) => {
     if (gameState.matchOver) {
       if (gameOverUI && !gameOverShown) {
         gameOverShown = true;
+
+        // Play announcement + game over BGM once when the modal opens
+        playGameOverAudio();
+
         gameOverUI.show(gameState, {
           rematch: () => {
+            // Stop game-over BGM when restarting
+            stopGameOverMusic();
+
             gameState.score = { player1: 0, player2: 0, player: 0, bot: 0 };
             gameState.matchStartMs = p.millis();
             gameState.matchOver = false;
@@ -729,6 +845,8 @@ const sketch = (p) => {
             resetRound();
           },
           menu: () => {
+            // Stop all music and go back to main menu
+            stopGameOverMusic();
             sessionStorage.removeItem("gameConfig");
             stopCurrentMusic();
             window.location.href = "index.html";
@@ -737,6 +855,8 @@ const sketch = (p) => {
       }
 
       if (p.kb.presses("r")) {
+        stopGameOverMusic();
+
         gameState.score = { player1: 0, player2: 0, player: 0, bot: 0 };
         gameState.matchStartMs = p.millis();
         gameState.matchOver = false;
@@ -746,6 +866,7 @@ const sketch = (p) => {
         resetRound();
       }
       if (p.kb.presses("escape")) {
+        stopGameOverMusic();
         sessionStorage.removeItem("gameConfig");
         stopCurrentMusic();
         window.location.href = "index.html";
@@ -813,15 +934,7 @@ const sketch = (p) => {
         }
       }
 
-      if (pickedUp) {
-        orb.remove();
-        gameState.orbs.splice(i, 1);
-
-        const randomDelay = p.random(1000, 5000);
-        gameState.pendingOrbSpawns.push({
-          spawnTime: p.millis() + randomDelay,
-        });
-      } else if (orb.checkDespawn()) {
+      if (pickedUp || orb.checkDespawn()) {
         orb.remove();
         gameState.orbs.splice(i, 1);
 
@@ -890,8 +1003,6 @@ const sketch = (p) => {
         if (bullet._shooter === player && bulletAgeMs < selfGraceMs) continue;
 
         if (bullet.overlaps(player.sprite)) {
-          // calculateDamage now correctly reads bullet.life (fixed in helper.js).
-          // playerHit() now applies armor reduction (fixed in tank.js).
           const calcDamage = calculateDamage(bullet, p);
           player.playerHit(bullet, calcDamage);
           hitTarget = true;
@@ -945,11 +1056,6 @@ const sketch = (p) => {
           }
         }
         if (touching) {
-          // BUG FIX: laser burn previously applied `health -=` directly,
-          // bypassing playerHit() and therefore ignoring armor entirely.
-          // Now routes through playerHit() so armor is respected.
-          // We pass null as the bullet since the burn path doesn't have a
-          // discrete bullet sprite to remove — playerHit guards for this.
           player.playerHit(null, _laserBurnDamage);
         }
       }
