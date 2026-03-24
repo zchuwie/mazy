@@ -1,7 +1,9 @@
 // src/main.js
 import { Orb } from "./components/orb.js";
 import { updateHud } from "./components/healthbar.js";
+// @ts-ignore
 import { initGameOverUI } from "./components/gameOver.js";
+// @ts-ignore
 import { initRoundWinnerBanner } from "./components/roundWinner.js";
 import {
   preloadImages,
@@ -43,6 +45,14 @@ const sketch = (p) => {
   // Guard so gameOverUI.show() is only called once per match-over.
   let gameOverShown = false;
 
+  // Pause state
+  let gamePaused = false;
+  let pauseStartedAt = 0;
+  let totalPausedMs = 0;
+
+  // Countdown state
+  let roundStarting = false;
+
   // ---- MUSIC STATE (ASYNC / NON-BLOCKING) ----
   const bgmState = musicTracks.map(() => ({
     sound: null,
@@ -61,6 +71,9 @@ const sketch = (p) => {
   // ---- GAME OVER AUDIO ----
   let gameOverAnnounce = null; // short "Game Over" VO / sting
   let gameOverMusic = null; // looped game-over track
+
+  // ---- COUNTDOWN AUDIO ----
+  let countdownSfx = null;
 
   let gameState = {
     players: [],
@@ -227,6 +240,55 @@ const sketch = (p) => {
     }
   }
 
+  // --------- PAUSE HELPERS ---------
+  function setPaused(paused) {
+    if (paused === gamePaused) return;
+
+    if (paused) {
+      // starting a pause
+      pauseStartedAt = p.millis();
+    } else {
+      // ending a pause: accumulate paused time
+      if (pauseStartedAt > 0) {
+        totalPausedMs += p.millis() - pauseStartedAt;
+        pauseStartedAt = 0;
+      }
+    }
+
+    gamePaused = paused;
+
+    // Notify DOM to show/hide pause modal if available
+    // @ts-ignore
+    if (window.__mazyPauseUI) {
+      if (paused) {
+        // @ts-ignore
+        window.__mazyPauseUI.show?.();
+      } else {
+        // @ts-ignore
+        window.__mazyPauseUI.hide?.();
+      }
+    }
+  }
+
+  function togglePause(forceValue) {
+    const next = typeof forceValue === "boolean" ? forceValue : !gamePaused;
+    // Do not allow pausing when match is over (game over UI is showing)
+    if (gameState.matchOver) return;
+    // Also do not pause during countdown
+    if (roundStarting) return;
+    setPaused(next);
+  }
+
+  // Let arena.html JS call these
+  // @ts-ignore
+  window.__mazyTogglePause = togglePause;
+  // @ts-ignore
+  window.__mazyPauseGoToMenu = () => {
+    sessionStorage.removeItem("gameConfig");
+    stopCurrentMusic();
+    window.location.href = "index.html";
+  };
+
   // Expose combat SFX helpers globally so tank.js can call them
   // @ts-ignore
   window.__mazyPlayFireSfxNormal = playFireSfxNormal;
@@ -236,6 +298,60 @@ const sketch = (p) => {
   window.__mazyPlayHitSfx = playHitSfx;
   // @ts-ignore
   window.__mazyPlayDestroyedSfx = playDestroyedSfx;
+
+  // --------- COUNTDOWN HELPERS (UI-like, simple) ---------
+
+  function showCountdownOverlay(text) {
+    const overlay = document.getElementById("countdownOverlay");
+    const label = document.getElementById("countdownText");
+    if (overlay) overlay.style.display = "flex";
+    if (label) label.textContent = text;
+  }
+
+  function hideCountdownOverlay() {
+    const overlay = document.getElementById("countdownOverlay");
+    if (overlay) overlay.style.display = "none";
+  }
+
+  function startRoundCountdown() {
+    roundStarting = true;
+    gamePaused = false; // ensure gameplay isn't paused instead
+
+    // Match timer starts after countdown finishes
+    gameState.matchStartMs = 0;
+    totalPausedMs = 0;
+
+    const steps = ["3", "2", "1", "GO!"];
+    const stepDurationMs = 800;
+    let index = 0;
+
+    const playStep = () => {
+      if (!roundStarting) return;
+      const text = steps[index];
+      showCountdownOverlay(text);
+
+      if (index === 0) {
+        // Play countdown sfx once
+        if (countdownSfx && countdownSfx.isLoaded && countdownSfx.isLoaded()) {
+          countdownSfx.stop();
+          countdownSfx.play();
+        }
+      }
+
+      index += 1;
+      if (index < steps.length) {
+        setTimeout(playStep, stepDurationMs);
+      } else {
+        setTimeout(() => {
+          hideCountdownOverlay();
+          roundStarting = false;
+          gameState.matchStartMs = p.millis();
+        }, stepDurationMs);
+      }
+    };
+
+    playStep();
+  }
 
   // --------- PRELOAD / MAP RENDERING ---------
 
@@ -261,7 +377,6 @@ const sketch = (p) => {
     }
 
     // === CORE COMBAT SFX ===
-    // Normal shot (Alpha / Bravo / Cobra, etc.)
     fireSfxNormal = p.loadSound(
       "/assets/audio/sfx/pop.mp3",
       (snd) => snd.setVolume(0.7),
@@ -270,7 +385,7 @@ const sketch = (p) => {
 
     // Laser shot (Delta)
     fireSfxLaser = p.loadSound(
-      "/assets/audio/sfx/laser-shot.mp3", // change extension if needed
+      "/assets/audio/sfx/laser-shot.mp3",
       (snd) => snd.setVolume(0.8),
       (err) => console.error("Failed to load laser-shot.mp3", err),
     );
@@ -302,6 +417,13 @@ const sketch = (p) => {
         snd.setLoop(true);
       },
       (err) => console.error("Failed to load game-over.mp3", err),
+    );
+
+    // === COUNTDOWN AUDIO ===
+    countdownSfx = p.loadSound(
+      "/assets/audio/sfx/countdown.wav",
+      (snd) => snd.setVolume(1.0),
+      (err) => console.error("Failed to load countdown.wav", err),
     );
   };
 
@@ -668,6 +790,11 @@ const sketch = (p) => {
     roundResetAt = 0;
     gameOverShown = false;
 
+    // Clear pause timing for the new round
+    gamePaused = false;
+    pauseStartedAt = 0;
+    totalPausedMs = 0;
+
     const previousIndex = currentMapIndex;
     if (mazeLayout.length > 1) {
       do {
@@ -689,6 +816,9 @@ const sketch = (p) => {
     }
 
     gameState.orbs = renderOrbSpawn(p, selectedMap, orbTypes);
+
+    // Start a countdown before the next round begins
+    startRoundCountdown();
   }
 
   // --------- SETUP / DRAW ---------
@@ -770,12 +900,27 @@ const sketch = (p) => {
     gameState.matchStartMs = p.millis();
     gameState.matchOver = false;
 
+    // Initialize Game Over and Round Winner UI
     gameOverUI = initGameOverUI();
     roundWinnerBanner = initRoundWinnerBanner();
+
+    // Start countdown for the very first round
+    startRoundCountdown();
   };
 
   p.draw = () => {
     p.background(220);
+
+    // If paused: freeze everything, including indicators
+    if (gamePaused) {
+      return;
+    }
+
+    // If in countdown: draw spawn indicators but skip gameplay/timer
+    if (roundStarting) {
+      drawSpawnIndicators();
+      return;
+    }
 
     // Poll: start music once async load finishes.
     // Only while match is active and not in round reset.
@@ -793,10 +938,10 @@ const sketch = (p) => {
       }
     }
 
-    // Match timer logic
+    // Match timer logic (ignore paused time)
     if (!gameState.matchOver && gameState.matchDurationSeconds > 0) {
       const elapsedSeconds = Math.floor(
-        (p.millis() - gameState.matchStartMs) / 1000,
+        (p.millis() - gameState.matchStartMs - totalPausedMs) / 1000,
       );
       if (elapsedSeconds >= gameState.matchDurationSeconds) {
         gameState.matchOver = true;
@@ -808,7 +953,7 @@ const sketch = (p) => {
     let remainingSeconds = 0;
     if (gameState.matchDurationSeconds > 0) {
       const elapsedSeconds = Math.floor(
-        (p.millis() - gameState.matchStartMs) / 1000,
+        (p.millis() - gameState.matchStartMs - totalPausedMs) / 1000,
       );
       remainingSeconds = Math.max(
         0,
@@ -831,6 +976,7 @@ const sketch = (p) => {
         // Play announcement + game over BGM once when the modal opens
         playGameOverAudio();
 
+        // @ts-ignore
         gameOverUI.show(gameState, {
           rematch: () => {
             // Stop game-over BGM when restarting
@@ -841,6 +987,13 @@ const sketch = (p) => {
             gameState.matchOver = false;
             roundOver = false;
             gameOverShown = false;
+
+            // Reset pause state
+            gamePaused = false;
+            pauseStartedAt = 0;
+            totalPausedMs = 0;
+
+            // @ts-ignore
             gameOverUI.hide();
             resetRound();
           },
@@ -862,6 +1015,13 @@ const sketch = (p) => {
         gameState.matchOver = false;
         roundOver = false;
         gameOverShown = false;
+
+        // Reset pause state
+        gamePaused = false;
+        pauseStartedAt = 0;
+        totalPausedMs = 0;
+
+        // @ts-ignore
         if (gameOverUI) gameOverUI.hide();
         resetRound();
       }
@@ -1094,12 +1254,12 @@ const sketch = (p) => {
       startRoundReset(roundOutcome);
     }
 
-    if (p.kb.presses("escape")) {
-      sessionStorage.removeItem("gameConfig");
-      stopCurrentMusic();
-      window.location.href = "index.html";
+    // In active gameplay, ESC toggles pause instead of going straight to menu.
+    if (!gameState.matchOver && p.kb.presses("escape")) {
+      togglePause();
     }
   };
 };
 
+// @ts-ignore
 new p5(sketch);

@@ -653,19 +653,136 @@ body.is-fading-in .page-fade {
 /* Container for 6 orbs: 2 rows x 3 columns */
 .hud-orb {
   display: grid;
-  grid-template-columns: repeat(3, auto); /* 3 columns */
-  grid-auto-rows: auto; /* 2 rows will be auto-created */
-  gap: 8px 10px; /* row gap / column gap */
-  justify-content: center; /* center as a block */
+  grid-template-columns: repeat(3, auto);
+  grid-auto-rows: auto;
+  gap: 8px 10px;
+  justify-content: center;
   align-content: center;
   margin-top: 8px;
 }
 
 /* Individual orb image: bigger “button-like” size */
 .hud-orb .orb-icon {
-  width: 60px; /* adjust if you want even bigger/smaller */
+  width: 60px;
   height: 60px;
   object-fit: contain;
-  image-rendering: pixelated; /* keeps retro look */
+  image-rendering: pixelated;
   opacity: 0.95;
+}
+
+/* ================= PAUSE MENU ================= */
+.pause-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 11000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(3px);
+}
+
+.pause-container {
+  background: linear-gradient(135deg, #1a3a52 0%, #2d5a7b 100%);
+  border: 6px solid #201453;
+  box-shadow:
+    0 0 40px rgba(0, 0, 0, 0.8),
+    10px 10px 0 #000;
+  padding: 32px 40px;
+  width: 420px;
+  max-width: 90vw;
+
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  align-items: stretch;
+  text-align: center;
+}
+
+.pause-title {
+  font-size: 24px;
+  color: #ffe600;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  text-shadow:
+    3px 3px 0 #000,
+    0 0 16px rgba(255, 230, 0, 0.6);
+}
+
+.pause-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.pause-btn {
+  width: 100%;
+  padding: 16px 0;
+  font-size: 12px;
+  color: #020617;
+  background: #59d4fa;
+  border: 4px solid #201453;
+  cursor: pointer;
+  box-shadow: 5px 5px 0 #142853;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  transition: all 0.12s ease;
+}
+
+.pause-btn:hover {
+  background: #1645a3;
+  color: #ffffff;
+  transform: translate(-2px, -2px);
+  box-shadow: 7px 7px 0 #142853;
+}
+
+.pause-btn:active {
+  transform: translate(2px, 2px);
+  box-shadow: 2px 2px 0 #142853;
+}
+
+.pause-hint {
+  font-size: 10px;
+  color: #7dbcf6;
+  opacity: 0.85;
+  letter-spacing: 1px;
+  text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.4);
+}
+
+/* ================= COUNTDOWN OVERLAY ================= */
+.countdown-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.countdown-text {
+  font-family: "Press Start 2P", monospace;
+  font-size: 96px;
+  color: #ffe600;
+  text-shadow:
+    5px 5px 0 #000,
+    0 0 24px rgba(255, 230, 0, 0.8);
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  animation: countdownPop 300ms ease-out;
+}
+
+@keyframes countdownPop {
+  0% {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+  40% {
+    transform: scale(1.1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
 }

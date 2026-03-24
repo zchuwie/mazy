@@ -1,4 +1,4 @@
-<!-- arena.html (RETRO ARCADE HUD - WITH GAME OVER MODAL) -->
+<!-- arena.html (RETRO ARCADE HUD - WITH GAME OVER + PAUSE MODALS) -->
 <!doctype html>
 <html lang="en">
   <head>
@@ -101,7 +101,7 @@
       <!-- CENTER -->
       <div class="arena-center">
         <div class="top-timer">
-          <button class="home-btn" id="homeBtn">⌂</button>
+          <button class="home-btn" id="homeBtn">||</button>
           <div id="matchTimerText">TIME REMAINING : --:--</div>
           <div style="width: 50px"></div>
         </div>
@@ -193,6 +193,11 @@
       </div>
     </div>
 
+    <!-- ================= COUNTDOWN OVERLAY ================= -->
+    <div id="countdownOverlay" class="countdown-overlay" style="display: none">
+      <div id="countdownText" class="countdown-text">3</div>
+    </div>
+
     <!-- ================= GAME OVER MODAL ================= -->
     <div id="gameOverModal" class="game-over-modal" style="display: none">
       <div class="game-over-container">
@@ -250,30 +255,98 @@
       </div>
     </div>
 
+    <!-- ================= PAUSE MENU ================= -->
+    <div id="pauseModal" class="pause-modal" style="display: none">
+      <div class="pause-container">
+        <div class="pause-title">GAME PAUSED</div>
+
+        <div class="pause-menu">
+          <button id="pauseContinueBtn" class="pause-btn">CONTINUE</button>
+          <button id="pauseOptionsBtn" class="pause-btn">OPTIONS</button>
+          <button id="pauseTutorialBtn" class="pause-btn">TUTORIAL</button>
+          <button id="pauseMainMenuBtn" class="pause-btn">MAIN MENU</button>
+        </div>
+
+        <div class="pause-hint">Press ESC to Resume</div>
+      </div>
+    </div>
+
     <script>
-      // Home button handler
-      document.getElementById("homeBtn").addEventListener("click", () => {
-        sessionStorage.removeItem("gameConfig");
-        window.location.href = "index.html";
-      });
+      // Global object to receive actions from main.js
+      window.gameOverActions = {};
 
       document.addEventListener("DOMContentLoaded", () => {
+        // Fade-in overlay for arena
         requestAnimationFrame(() => {
           document.body.classList.add("is-fading-in");
         });
-      });
 
-      // Game Over Button Handlers
-      document.getElementById("rematchBtn").addEventListener("click", () => {
-        window.gameOverActions?.rematch?.();
-      });
+        const homeBtn = document.getElementById("homeBtn");
+        const pauseModal = document.getElementById("pauseModal");
+        const pauseContinueBtn = document.getElementById("pauseContinueBtn");
+        const pauseMainMenuBtn = document.getElementById("pauseMainMenuBtn");
+        const pauseOptionsBtn = document.getElementById("pauseOptionsBtn");
+        const pauseTutorialBtn = document.getElementById("pauseTutorialBtn");
 
-      document.getElementById("menuBtn").addEventListener("click", () => {
-        window.gameOverActions?.menu?.();
-      });
+        // --- PAUSE MENU HELPERS (HTML side) ---
+        function showPauseModal() {
+          if (pauseModal) pauseModal.style.display = "flex";
+        }
 
-      // Global object to receive actions from main.js
-      window.gameOverActions = {};
+        function hidePauseModal() {
+          if (pauseModal) pauseModal.style.display = "none";
+        }
+
+        // Home button opens pause menu instead of going straight home
+        if (homeBtn) {
+          homeBtn.addEventListener("click", () => {
+            window.__mazyTogglePause?.(true);
+          });
+        }
+
+        // Continue button
+        if (pauseContinueBtn) {
+          pauseContinueBtn.addEventListener("click", () => {
+            window.__mazyTogglePause?.(false);
+          });
+        }
+
+        // Main menu button from pause
+        if (pauseMainMenuBtn) {
+          pauseMainMenuBtn.addEventListener("click", () => {
+            window.__mazyPauseGoToMenu?.();
+          });
+        }
+
+        // Options: placeholder for now
+        if (pauseOptionsBtn) {
+          pauseOptionsBtn.addEventListener("click", () => {
+            alert("Options are only available from the main menu for now.");
+          });
+        }
+
+        // Tutorial: placeholder for now
+        if (pauseTutorialBtn) {
+          pauseTutorialBtn.addEventListener("click", () => {
+            alert("Tutorial is only available from the main menu for now.");
+          });
+        }
+
+        // Expose minimal DOM pause APIs so main.js can control visibility
+        window.__mazyPauseUI = {
+          show: showPauseModal,
+          hide: hidePauseModal,
+        };
+
+        // Game Over Button Handlers
+        document.getElementById("rematchBtn").addEventListener("click", () => {
+          window.gameOverActions?.rematch?.();
+        });
+
+        document.getElementById("menuBtn").addEventListener("click", () => {
+          window.gameOverActions?.menu?.();
+        });
+      });
     </script>
 
     <div class="page-fade" aria-hidden="true"></div>
