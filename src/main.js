@@ -69,6 +69,10 @@ const sketch = (p) => {
   let hitSfx = null;
   let destroyedSfx = null;
 
+  // ---- UI BUTTON SFX (CLICK / HOVER) ----
+  let uiClickSfx = null;
+  let uiHoverSfx = null;
+
   // ---- GAME OVER AUDIO ----
   let gameOverAnnounce = null; // short "Game Over" VO / sting
   let gameOverMusic = null; // looped game-over track
@@ -146,6 +150,18 @@ const sketch = (p) => {
 
   const BGM_VOLUME = 0.4;
 
+  function getMusicVolumeFactor() {
+    try {
+      const stored = sessionStorage.getItem("musicVolume");
+      const parsed = stored != null ? Number.parseInt(stored, 10) : NaN;
+      if (!Number.isFinite(parsed)) return 0.8; // default 80%
+      const clamped = Math.max(0, Math.min(parsed, 100));
+      return clamped / 100;
+    } catch (e) {
+      return 0.8;
+    }
+  }
+
   function resolveTrackIndex(mapIndex) {
     if (!musicTracks || musicTracks.length === 0) return -1;
 
@@ -171,7 +187,8 @@ const sketch = (p) => {
     ensureTrackLoaded(trackIndex);
 
     if (state.sound) {
-      state.sound.setVolume(BGM_VOLUME);
+      const factor = getMusicVolumeFactor();
+      state.sound.setVolume(BGM_VOLUME * factor);
       state.sound.loop();
       currentMusic = state.sound;
     } else {
@@ -179,8 +196,27 @@ const sketch = (p) => {
     }
   }
 
+  function applyMusicVolumeFromSettings() {
+    if (currentMusic && currentMusic.setVolume) {
+      const factor = getMusicVolumeFactor();
+      currentMusic.setVolume(BGM_VOLUME * factor);
+    }
+  }
+
   // ---- ORB SFX (SHORT ONE-SHOTS, PRELOADED) ----
   const orbSfxState = {};
+
+  function getSfxVolumeFactor() {
+    try {
+      const stored = sessionStorage.getItem("sfxVolume");
+      const parsed = stored != null ? Number.parseInt(stored, 10) : NaN;
+      if (!Number.isFinite(parsed)) return 0.7; // default 70%
+      const clamped = Math.max(0, Math.min(parsed, 100));
+      return clamped / 100;
+    } catch (e) {
+      return 0.7;
+    }
+  }
 
   function playOrbSfx(type) {
     const state = orbSfxState[type];
@@ -214,6 +250,50 @@ const sketch = (p) => {
     if (destroyedSfx && destroyedSfx.isLoaded && destroyedSfx.isLoaded()) {
       destroyedSfx.play();
     }
+  }
+
+  function playUiClick() {
+    if (uiClickSfx && uiClickSfx.isLoaded && uiClickSfx.isLoaded()) {
+      uiClickSfx.play();
+    }
+  }
+
+  function playUiHover() {
+    if (uiHoverSfx && uiHoverSfx.isLoaded && uiHoverSfx.isLoaded()) {
+      uiHoverSfx.play();
+    }
+  }
+
+  function applySfxVolumeFromSettings() {
+    const factor = getSfxVolumeFactor();
+
+    // Orb SFX
+    for (const key in orbSfxState) {
+      if (!Object.prototype.hasOwnProperty.call(orbSfxState, key)) continue;
+      const s = orbSfxState[key]?.sound;
+      if (s && s.setVolume) s.setVolume(factor);
+    }
+
+    // Core combat SFX
+    if (fireSfxNormal && fireSfxNormal.setVolume)
+      fireSfxNormal.setVolume(factor);
+    if (fireSfxLaser && fireSfxLaser.setVolume)
+      fireSfxLaser.setVolume(factor);
+    if (hitSfx && hitSfx.setVolume) hitSfx.setVolume(factor);
+    if (destroyedSfx && destroyedSfx.setVolume)
+      destroyedSfx.setVolume(factor);
+
+    // UI button SFX
+    if (uiClickSfx && uiClickSfx.setVolume) uiClickSfx.setVolume(factor);
+    if (uiHoverSfx && uiHoverSfx.setVolume) uiHoverSfx.setVolume(factor);
+
+    // Game over and countdown audio
+    if (gameOverAnnounce && gameOverAnnounce.setVolume)
+      gameOverAnnounce.setVolume(factor);
+    if (gameOverMusic && gameOverMusic.setVolume)
+      gameOverMusic.setVolume(factor);
+    if (countdownSfx && countdownSfx.setVolume)
+      countdownSfx.setVolume(factor);
   }
 
   // Game over audio helpers
@@ -290,6 +370,16 @@ const sketch = (p) => {
     window.location.href = "index.html";
   };
 
+  // Allow DOM (arena options modal) to reapply music volume
+  // when the user changes the MUSIC slider.
+  // @ts-ignore
+  window.__mazyApplyMusicVolume = applyMusicVolumeFromSettings;
+
+   // Allow DOM (arena options modal) to reapply SFX volume
+   // when the user changes the SFX slider.
+   // @ts-ignore
+   window.__mazyApplySfxVolume = applySfxVolumeFromSettings;
+
   // Expose combat SFX helpers globally so tank.js can call them
   // @ts-ignore
   window.__mazyPlayFireSfxNormal = playFireSfxNormal;
@@ -299,6 +389,12 @@ const sketch = (p) => {
   window.__mazyPlayHitSfx = playHitSfx;
   // @ts-ignore
   window.__mazyPlayDestroyedSfx = playDestroyedSfx;
+
+  // Expose UI SFX helpers globally so arena.html can call them
+  // @ts-ignore
+  window.__mazyPlayUiClick = playUiClick;
+  // @ts-ignore
+  window.__mazyPlayUiHover = playUiHover;
 
   // --------- COUNTDOWN HELPERS (UI-like, simple) ---------
 
@@ -364,7 +460,7 @@ const sketch = (p) => {
       orbSfxState[type].sound = p.loadSound(
         path,
         (snd) => {
-          snd.setVolume(0.7);
+          snd.setVolume(getSfxVolumeFactor());
         },
         (err) => {
           console.error("Failed to preload orb SFX:", type, path, err);
@@ -376,33 +472,46 @@ const sketch = (p) => {
     // === CORE COMBAT SFX ===
     fireSfxNormal = p.loadSound(
       "/assets/audio/sfx/pop.mp3",
-      (snd) => snd.setVolume(0.7),
+      (snd) => snd.setVolume(getSfxVolumeFactor()),
       (err) => console.error("Failed to load normal shot SFX", err),
     );
 
     // Laser shot (Delta)
     fireSfxLaser = p.loadSound(
       "/assets/audio/sfx/laser-shot.mp3",
-      (snd) => snd.setVolume(0.8),
+      (snd) => snd.setVolume(getSfxVolumeFactor()),
       (err) => console.error("Failed to load laser-shot.mp3", err),
     );
 
     hitSfx = p.loadSound(
       "/assets/audio/sfx/hit.wav",
-      (snd) => snd.setVolume(0.6),
+      (snd) => snd.setVolume(getSfxVolumeFactor()),
       (err) => console.error("Failed to load hit.wav", err),
     );
 
     destroyedSfx = p.loadSound(
       "/assets/audio/sfx/destroyed.wav",
-      (snd) => snd.setVolume(0.8),
+      (snd) => snd.setVolume(getSfxVolumeFactor()),
       (err) => console.error("Failed to load destroyed.wav", err),
+    );
+
+    // === UI BUTTON SFX ===
+    uiClickSfx = p.loadSound(
+      "/assets/audio/sfx/button-select.mp3",
+      (snd) => snd.setVolume(getSfxVolumeFactor()),
+      (err) => console.error("Failed to load button-select.mp3", err),
+    );
+
+    uiHoverSfx = p.loadSound(
+      "/assets/audio/sfx/hover-button.wav",
+      (snd) => snd.setVolume(getSfxVolumeFactor()),
+      (err) => console.error("Failed to load hover-button.wav", err),
     );
 
     // === GAME OVER AUDIO ===
     gameOverAnnounce = p.loadSound(
       "/assets/audio/bgm/game-over-announcement.wav",
-      (snd) => snd.setVolume(1.0),
+      (snd) => snd.setVolume(getSfxVolumeFactor()),
       (err) =>
         console.error("Failed to load game-over-announcement.wav", err),
     );
@@ -410,7 +519,7 @@ const sketch = (p) => {
     gameOverMusic = p.loadSound(
       "/assets/audio/bgm/game-over.mp3",
       (snd) => {
-        snd.setVolume(0.8);
+        snd.setVolume(getSfxVolumeFactor());
         snd.setLoop(true);
       },
       (err) => console.error("Failed to load game-over.mp3", err),
@@ -419,7 +528,7 @@ const sketch = (p) => {
     // === COUNTDOWN AUDIO ===
     countdownSfx = p.loadSound(
       "/assets/audio/sfx/countdown.wav",
-      (snd) => snd.setVolume(1.0),
+      (snd) => snd.setVolume(getSfxVolumeFactor()),
       (err) => console.error("Failed to load countdown.wav", err),
     );
   };
@@ -931,7 +1040,8 @@ const sketch = (p) => {
         if (trackIndex >= 0) {
           const state = bgmState[trackIndex];
           if (state && state.sound && !state.sound.isPlaying()) {
-            state.sound.setVolume(BGM_VOLUME);
+            const factor = getMusicVolumeFactor();
+            state.sound.setVolume(BGM_VOLUME * factor);
             state.sound.loop();
             currentMusic = state.sound;
           }

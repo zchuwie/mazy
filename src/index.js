@@ -34,6 +34,18 @@ function fireRatePercent(shootCooldown) {
   return clampPercent(((max - shootCooldown) / (max - min)) * 100);
 }
 
+function getSavedMusicVolumeFactor() {
+  try {
+    const stored = sessionStorage.getItem("musicVolume");
+    const parsed = stored != null ? Number.parseInt(stored, 10) : NaN;
+    if (!Number.isFinite(parsed)) return 0.8; // default 80%
+    const clamped = Math.max(0, Math.min(parsed, 100));
+    return clamped / 100;
+  } catch (e) {
+    return 0.8;
+  }
+}
+
 /**
  * Update the character selection UI for a given player panel.
  * @param {"1"|"2"} playerId
@@ -174,7 +186,7 @@ const sketch = (p) => {
     p.noCanvas();
 
     bgMusic.setLoop(true);
-    bgMusic.setVolume(0.8);
+    bgMusic.setVolume(getSavedMusicVolumeFactor());
 
     // Unlock audio on first user interaction
     window.addEventListener("click", startMusic, { once: true });
@@ -520,8 +532,28 @@ const sketch = (p) => {
         toggleHoverSfx.textContent = hoverEnabled ? "ON" : "OFF";
     }
 
-    // set initial numbers once
+    // set initial numbers once (load from saved settings if present)
+    const savedMusic = sessionStorage.getItem("musicVolume");
+    const savedSfx = sessionStorage.getItem("sfxVolume");
+
+    if (musicVolume instanceof HTMLInputElement && savedMusic != null) {
+      musicVolume.value = savedMusic;
+    }
+    if (sfxVolume instanceof HTMLInputElement && savedSfx != null) {
+      sfxVolume.value = savedSfx;
+    }
+
     syncOptionsUI();
+
+    // Apply stored music volume to bgMusic on load so returning
+    // from arena respects the last setting (including 0).
+    if (bgMusic && bgMusic.isLoaded && bgMusic.isLoaded()) {
+      if (musicVolume instanceof HTMLInputElement) {
+        bgMusic.setVolume(Number(musicVolume.value) / 100);
+      } else {
+        bgMusic.setVolume(getSavedMusicVolumeFactor());
+      }
+    }
 
     musicVolume?.addEventListener("input", () => {
       if (musicVolume instanceof HTMLInputElement) {
@@ -531,6 +563,9 @@ const sketch = (p) => {
         if (bgMusic && bgMusic.isLoaded()) {
           bgMusic.setVolume(Number(musicVolume.value) / 100);
         }
+
+        // persist for arena
+        sessionStorage.setItem("musicVolume", musicVolume.value);
       }
     });
 
@@ -547,6 +582,9 @@ const sketch = (p) => {
           characterSelectSound.setVolume(vol);
         if (characterConfirmSound && characterConfirmSound.isLoaded())
           characterConfirmSound.setVolume(vol);
+
+        // persist for arena
+        sessionStorage.setItem("sfxVolume", sfxVolume.value);
       }
     });
 
@@ -569,6 +607,9 @@ const sketch = (p) => {
 
       if (musicValue) musicValue.textContent = "80";
       if (sfxValue) sfxValue.textContent = "70";
+
+      sessionStorage.setItem("musicVolume", "80");
+      sessionStorage.setItem("sfxVolume", "70");
 
       // apply volumes immediately
       if (bgMusic && bgMusic.isLoaded()) bgMusic.setVolume(0.8);

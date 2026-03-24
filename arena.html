@@ -228,10 +228,10 @@
         <!-- Action Buttons -->
         <div class="game-over-buttons">
           <button id="rematchBtn" class="game-over-btn rematch-btn">
-            <span class="btn-key">R</span> REMATCH
+            <span class="btn-key"></span> REMATCH
           </button>
           <button id="menuBtn" class="game-over-btn menu-btn">
-            <span class="btn-key">ESC</span> MENU
+            <span class="btn-key"></span> MENU
           </button>
         </div>
 
@@ -552,6 +552,16 @@
           modal.style.display = "none";
         }
 
+        function attachUiSounds(button) {
+          if (!button) return;
+          button.addEventListener("click", () => {
+            window.__mazyPlayUiClick?.();
+          });
+          button.addEventListener("mouseenter", () => {
+            window.__mazyPlayUiHover?.();
+          });
+        }
+
         // --- PAUSE MENU HELPERS (HTML side) ---
         function showPauseModal() {
           if (pauseModal) pauseModal.style.display = "flex";
@@ -563,6 +573,7 @@
 
         // Home button opens pause menu instead of going straight home
         if (homeBtn) {
+          attachUiSounds(homeBtn);
           homeBtn.addEventListener("click", () => {
             window.__mazyTogglePause?.(true);
           });
@@ -570,6 +581,7 @@
 
         // Continue button
         if (pauseContinueBtn) {
+          attachUiSounds(pauseContinueBtn);
           pauseContinueBtn.addEventListener("click", () => {
             window.__mazyTogglePause?.(false);
           });
@@ -577,6 +589,7 @@
 
         // Main menu button from pause
         if (pauseMainMenuBtn) {
+          attachUiSounds(pauseMainMenuBtn);
           pauseMainMenuBtn.addEventListener("click", () => {
             window.__mazyPauseGoToMenu?.();
           });
@@ -589,6 +602,7 @@
           document.getElementById("closeOptionsBottom");
 
         if (pauseOptionsBtn) {
+          attachUiSounds(pauseOptionsBtn);
           pauseOptionsBtn.addEventListener("click", () => {
             if (optionsModal) optionsModal.style.display = "flex";
           });
@@ -599,12 +613,14 @@
         }
 
         if (closeOptions) {
+          attachUiSounds(closeOptions);
           closeOptions.addEventListener("click", () => {
             closeOptionsModal();
           });
         }
 
         if (closeOptionsBottom) {
+          attachUiSounds(closeOptionsBottom);
           closeOptionsBottom.addEventListener("click", () => {
             closeOptionsModal();
           });
@@ -631,22 +647,47 @@
           }
         }
 
+        // Load saved volumes from sessionStorage so arena options
+        // reflect the same global settings as the main menu.
+        const savedMusic = sessionStorage.getItem("musicVolume");
+        const savedSfx = sessionStorage.getItem("sfxVolume");
+
+        if (musicVolume instanceof HTMLInputElement && savedMusic != null) {
+          musicVolume.value = savedMusic;
+        }
+        if (sfxVolume instanceof HTMLInputElement && savedSfx != null) {
+          sfxVolume.value = savedSfx;
+        }
+
         syncArenaOptionsUI();
 
         if (musicVolume instanceof HTMLInputElement) {
           musicVolume.addEventListener("input", () => {
             if (musicValue) musicValue.textContent = musicVolume.value;
+
+            // Persist and apply new music volume globally
+            sessionStorage.setItem("musicVolume", musicVolume.value);
+            if (window.__mazyApplyMusicVolume) {
+              window.__mazyApplyMusicVolume();
+            }
           });
         }
 
         if (sfxVolume instanceof HTMLInputElement) {
           sfxVolume.addEventListener("input", () => {
             if (sfxValue) sfxValue.textContent = sfxVolume.value;
+
+            // Persist and apply new SFX volume globally
+            sessionStorage.setItem("sfxVolume", sfxVolume.value);
+            if (window.__mazyApplySfxVolume) {
+              window.__mazyApplySfxVolume();
+            }
           });
         }
 
         // Tutorial from pause -> open in-arena tutorial modal
         if (pauseTutorialBtn) {
+          attachUiSounds(pauseTutorialBtn);
           pauseTutorialBtn.addEventListener("click", () => {
             openTutorial();
           });
@@ -666,12 +707,14 @@
         const tutorialModal = document.getElementById("tutorialModal");
 
         if (closeTutorial) {
+          attachUiSounds(closeTutorial);
           closeTutorial.addEventListener("click", () => {
             closeTutorialModal();
           });
         }
 
         if (prevTutorial) {
+          attachUiSounds(prevTutorial);
           prevTutorial.addEventListener("click", () => {
             if (tutorialStepIndex > 0) tutorialStepIndex--;
             renderTutorial();
@@ -679,6 +722,7 @@
         }
 
         if (nextTutorial) {
+          attachUiSounds(nextTutorial);
           nextTutorial.addEventListener("click", () => {
             if (tutorialStepIndex < tutorialSlides.length - 1)
               tutorialStepIndex++;
@@ -699,13 +743,22 @@
         };
 
         // Game Over Button Handlers
-        document.getElementById("rematchBtn").addEventListener("click", () => {
-          window.gameOverActions?.rematch?.();
-        });
+        const rematchBtn = document.getElementById("rematchBtn");
+        const menuBtn = document.getElementById("menuBtn");
 
-        document.getElementById("menuBtn").addEventListener("click", () => {
-          window.gameOverActions?.menu?.();
-        });
+        if (rematchBtn) {
+          attachUiSounds(rematchBtn);
+          rematchBtn.addEventListener("click", () => {
+            window.gameOverActions?.rematch?.();
+          });
+        }
+
+        if (menuBtn) {
+          attachUiSounds(menuBtn);
+          menuBtn.addEventListener("click", () => {
+            window.gameOverActions?.menu?.();
+          });
+        }
         // Tutorial keyboard controls (ArrowLeft/ArrowRight/Escape)
         document.addEventListener("keydown", (e) => {
           const modal = document.getElementById("tutorialModal");
