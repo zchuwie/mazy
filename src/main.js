@@ -21,7 +21,7 @@ import {
   mazeLayout,
   musicTracks,
   tankCharacters,
-  orbSfx, // <- SFX mapping from interface.js
+  orbSfx,
 } from "./interface.js";
 import {
   renderArenaConfig,
@@ -36,10 +36,13 @@ const sketch = (p) => {
   let tilesGroup = null;
   let currentMapIndex = 0;
   let roundOver = false;
-  let roundMessage = "";
   let roundResetAt = 0;
   let gameOverUI = null;
   let roundWinnerBanner = null;
+
+  // BUG FIX: guard flag so gameOverUI.show() is only called ONCE per
+  // match-over event, not on every draw() frame (~60x/s).
+  let gameOverShown = false;
 
   // ---- MUSIC STATE (ASYNC / NON-BLOCKING) ----
   const bgmState = musicTracks.map(() => ({
@@ -48,6 +51,7 @@ const sketch = (p) => {
     failed: false,
   }));
   let currentMusic = null;
+  let warnedTrackClamp = false;
 
   let gameState = {
     players: [],
@@ -66,7 +70,21 @@ const sketch = (p) => {
     matchStartMs: 0,
     matchDurationSeconds: 0,
     matchOver: false,
+    spawnIndicators: [],
+    spawnIndicatorUntil: 0,
   };
+
+  const SPAWN_INDICATOR_DURATION_MS = 1800;
+
+  function initBulletGroup(group) {
+    if (!group || group._initialized) return;
+    group.diameter = 8;
+    group.color = "black";
+    group.bounciness = 1;
+    group.friction = 0;
+    group.drag = 0;
+    group._initialized = true;
+  }
 
   // --------- MUSIC HELPERS (NON-BLOCKING) ---------
 
@@ -88,7 +106,6 @@ const sketch = (p) => {
       return;
     }
 
-    // IMPORTANT: this does NOT block the sketch; it loads in background.
     p.loadSound(
       file,
       (snd) => {
@@ -104,34 +121,45 @@ const sketch = (p) => {
     );
   }
 
+  // BUG FIX: unified volume constant so both the immediate-play path and the
+  // draw()-poll path use the same value. Previously 0.1 vs 0.6.
+  const BGM_VOLUME = 0.4;
+
+  function resolveTrackIndex(mapIndex) {
+    if (!musicTracks || musicTracks.length === 0) return -1;
+
+    const clamped = Math.max(0, Math.min(mapIndex, musicTracks.length - 1));
+    if (mapIndex !== clamped && !warnedTrackClamp) {
+      console.warn(
+        "Map index exceeds available BGM tracks. Reusing last available track.",
+      );
+      warnedTrackClamp = true;
+    }
+    return clamped;
+  }
+
   function playMapMusic(mapIndex) {
     stopCurrentMusic();
 
     if (!musicTracks || musicTracks.length === 0) return;
 
-    const trackIndex = Math.max(
-      0,
-      Math.min(mapIndex, musicTracks.length - 1),
-    );
+    const trackIndex = resolveTrackIndex(mapIndex);
+    if (trackIndex < 0) return;
     const state = bgmState[trackIndex];
 
-    // Start loading if not yet
     ensureTrackLoaded(trackIndex);
 
-    // If sound is already loaded, play immediately
     if (state.sound) {
-      state.sound.setVolume(0.1);
+      state.sound.setVolume(BGM_VOLUME);
       state.sound.loop();
       currentMusic = state.sound;
     } else {
-      // If still loading, we can poll later in draw() to start it once ready
       currentMusic = null;
     }
   }
 
   // ---- ORB SFX (SHORT ONE-SHOTS, PRELOADED) ----
-  // Filled during p.preload so first pickup has sound immediately.
-  const orbSfxState = {}; // { speed: { sound, failed }, ... }
+  const orbSfxState = {};
 
   function playOrbSfx(type) {
     const state = orbSfxState[type];
@@ -139,17 +167,14 @@ const sketch = (p) => {
     state.sound.play();
   }
 
-  // Expose for orb.js without circular imports
   // @ts-ignore
   window.__mazyPlayOrbSfx = playOrbSfx;
 
   // --------- PRELOAD / MAP RENDERING ---------
 
   p.preload = () => {
-    // Images / graphics
     preloadImages(p);
 
-    // Preload all orb SFX so the first pickup plays audio
     for (const type in orbSfx) {
       if (!Object.prototype.hasOwnProperty.call(orbSfx, type)) continue;
       const path = orbSfx[type];
@@ -158,7 +183,7 @@ const sketch = (p) => {
       orbSfxState[type].sound = p.loadSound(
         path,
         (snd) => {
-          snd.setVolume(0.7); // adjust orb SFX volume here
+          snd.setVolume(0.7);
         },
         (err) => {
           console.error("Failed to preload orb SFX:", type, path, err);
@@ -179,7 +204,6 @@ const sketch = (p) => {
       OFFSETY,
     );
 
-    // Kick off music for this map (non-blocking)
     playMapMusic(mapIndex);
 
     return selected;
@@ -205,15 +229,183 @@ const sketch = (p) => {
     tilesGroup = null;
   }
 
-  function applySpawnPositions() {
-    if (gameState.gameMode === 1) {
-      resetTank(gameState.players[0], WIDTH / 2, HEIGHT / 2);
-      resetTank(gameState.players[1], WIDTH / 2 + 150, HEIGHT / 2);
-    } else if (gameState.gameMode === 2) {
-      resetTank(gameState.players[0], WIDTH / 2, HEIGHT / 2);
-      if (gameState.bot)
-        resetTank(gameState.bot, WIDTH / 2 + 150, HEIGHT / 2 + 150);
+  function getRandomHallwaySpawns(count) {
+    const points = Array.isArray(gameState.hallwayPositions)
+      ? gameState.hallwayPositions
+      : [];
+
+    if (points.length < count) return null;
+
+    // Keep spawn points in walkable hallways and away from wall colliders.
+    const SPAWN_TANK_DIAMETER = 45;
+    const MIN_SPAWN_GAP = 120;
+
+    function circleHitsWall(x, y, radius, wall) {
+      if (!wall) return false;
+
+      const wallW = wall.w || wall.width || 0;
+      const wallH = wall.h || wall.height || 0;
+      const halfW = wallW / 2;
+      const halfH = wallH / 2;
+
+      const dx = Math.abs(x - wall.x);
+      const dy = Math.abs(y - wall.y);
+      const ox = Math.max(dx - halfW, 0);
+      const oy = Math.max(dy - halfH, 0);
+
+      return ox * ox + oy * oy < radius * radius;
     }
+
+    function isSpawnPointClear(x, y, diameter) {
+      const radius = diameter / 2;
+      const groups = [hWalls, vWalls, borderWalls];
+
+      for (const group of groups) {
+        if (!group || typeof group.length !== "number") continue;
+        for (let i = 0; i < group.length; i++) {
+          if (circleHitsWall(x, y, radius, group[i])) {
+            return false;
+          }
+        }
+      }
+
+      return true;
+    }
+
+    const validPoints = points.filter((pt) =>
+      isSpawnPointClear(pt.x, pt.y, SPAWN_TANK_DIAMETER),
+    );
+    const source = validPoints.length >= count ? validPoints : points;
+
+    const pool = [...source];
+    const picks = [];
+    for (let i = 0; i < count; i++) {
+      if (pool.length === 0) break;
+
+      let chosen = null;
+      for (let attempt = 0; attempt < 25; attempt++) {
+        const idx = Math.floor(p.random(pool.length));
+        const candidate = pool[idx];
+
+        const isFarEnough = picks.every(
+          (picked) =>
+            Math.hypot(candidate.x - picked.x, candidate.y - picked.y) >=
+            MIN_SPAWN_GAP,
+        );
+
+        if (isFarEnough || pool.length === 1) {
+          chosen = candidate;
+          pool.splice(idx, 1);
+          break;
+        }
+      }
+
+      if (!chosen) {
+        const idx = Math.floor(p.random(pool.length));
+        chosen = pool[idx];
+        pool.splice(idx, 1);
+      }
+
+      picks.push(chosen);
+    }
+
+    return picks.length === count ? picks : null;
+  }
+
+  function setSpawnIndicators(spawnPoints) {
+    gameState.spawnIndicators = Array.isArray(spawnPoints)
+      ? [...spawnPoints]
+      : [];
+    gameState.spawnIndicatorUntil = p.millis() + SPAWN_INDICATOR_DURATION_MS;
+  }
+
+  function drawSpawnIndicators() {
+    const points = gameState.spawnIndicators;
+    if (!Array.isArray(points) || points.length === 0) return;
+
+    const now = p.millis();
+    if (now >= gameState.spawnIndicatorUntil) return;
+
+    const t = now / 170;
+    const pulse = 0.5 + 0.5 * Math.sin(t);
+    const life =
+      Math.max(0, gameState.spawnIndicatorUntil - now) /
+      SPAWN_INDICATOR_DURATION_MS;
+    const alpha = 130 + 125 * life;
+
+    p.push();
+    p.strokeWeight(6);
+
+    for (const pt of points) {
+      const outer = 56 + pulse * 24;
+      const inner = 26 + pulse * 10;
+      const core = 10 + pulse * 6;
+
+      // Vibrant neon magenta to make spawn points instantly noticeable.
+      p.noFill();
+      p.stroke(255, 0, 180, alpha);
+      p.circle(pt.x, pt.y, outer);
+
+      p.stroke(255, 70, 210, alpha);
+      p.circle(pt.x, pt.y, inner);
+
+      p.noStroke();
+      p.fill(255, 35, 190, 90 + 80 * pulse);
+      p.circle(pt.x, pt.y, core);
+
+      p.stroke(255, 255, 255, alpha);
+      p.strokeWeight(4);
+      p.line(pt.x - 14, pt.y, pt.x + 14, pt.y);
+      p.line(pt.x, pt.y - 14, pt.x, pt.y + 14);
+
+      p.stroke(255, 255, 255, 90 + 90 * life);
+      p.strokeWeight(2);
+      p.line(pt.x - 26, pt.y, pt.x + 26, pt.y);
+      p.line(pt.x, pt.y - 26, pt.x, pt.y + 26);
+
+      p.strokeWeight(6);
+    }
+
+    p.pop();
+  }
+
+  function applySpawnPositions() {
+    const spawnCount = gameState.gameMode === 1 ? 2 : gameState.bot ? 2 : 1;
+    const randomSpawns = getRandomHallwaySpawns(spawnCount);
+    const appliedSpawns = [];
+
+    if (gameState.gameMode === 1) {
+      if (randomSpawns) {
+        resetTank(gameState.players[0], randomSpawns[0].x, randomSpawns[0].y);
+        appliedSpawns.push({ x: randomSpawns[0].x, y: randomSpawns[0].y });
+        resetTank(gameState.players[1], randomSpawns[1].x, randomSpawns[1].y);
+        appliedSpawns.push({ x: randomSpawns[1].x, y: randomSpawns[1].y });
+      } else {
+        resetTank(gameState.players[0], WIDTH / 2, HEIGHT / 2);
+        appliedSpawns.push({ x: WIDTH / 2, y: HEIGHT / 2 });
+        resetTank(gameState.players[1], WIDTH / 2 + 150, HEIGHT / 2);
+        appliedSpawns.push({ x: WIDTH / 2 + 150, y: HEIGHT / 2 });
+      }
+    } else if (gameState.gameMode === 2) {
+      if (randomSpawns) {
+        resetTank(gameState.players[0], randomSpawns[0].x, randomSpawns[0].y);
+        appliedSpawns.push({ x: randomSpawns[0].x, y: randomSpawns[0].y });
+        if (gameState.bot && randomSpawns[1]) {
+          resetTank(gameState.bot, randomSpawns[1].x, randomSpawns[1].y);
+          appliedSpawns.push({ x: randomSpawns[1].x, y: randomSpawns[1].y });
+        }
+      } else {
+        resetTank(gameState.players[0], WIDTH / 2, HEIGHT / 2);
+        appliedSpawns.push({ x: WIDTH / 2, y: HEIGHT / 2 });
+        if (gameState.bot)
+          resetTank(gameState.bot, WIDTH / 2 + 150, HEIGHT / 2 + 150);
+        if (gameState.bot) {
+          appliedSpawns.push({ x: WIDTH / 2 + 150, y: HEIGHT / 2 + 150 });
+        }
+      }
+    }
+
+    setSpawnIndicators(appliedSpawns);
   }
 
   function freezeAllSprites() {
@@ -231,11 +423,7 @@ const sketch = (p) => {
   function resetTank(tank, x, y) {
     if (!tank || !tank.sprite) return;
     tank.health = tank.maxHealth || 100;
-    tank.activeEffects = [];
-    tank.speedMultiplier = 1;
-    tank.damageMultiplier = 1;
-    tank.cooldownMultiplier = 1;
-    tank.updateEffects();
+    tank.resetEffects();
 
     tank.sprite.collider = "dynamic";
     tank.sprite.x = x;
@@ -274,10 +462,25 @@ const sketch = (p) => {
   }
 
   function clearBullets() {
-    for (let i = gameState.bullet.length - 1; i >= 0; i--) {
-      const bullet = gameState.bullet[i];
-      if (bullet && typeof bullet.remove === "function") bullet.remove();
+    if (!gameState.bullet) return;
+
+    if (typeof gameState.bullet.removeAll === "function") {
+      gameState.bullet.removeAll();
+    } else {
+      for (let i = gameState.bullet.length - 1; i >= 0; i--) {
+        const bullet = gameState.bullet[i];
+        if (bullet && typeof bullet.remove === "function") bullet.remove();
+      }
     }
+
+    const freshBulletGroup = new p.Group();
+    initBulletGroup(freshBulletGroup);
+    gameState.bullet = freshBulletGroup;
+
+    for (const player of gameState.players) {
+      if (player) player.bullet = freshBulletGroup;
+    }
+    if (gameState.bot) gameState.bot.bullet = freshBulletGroup;
   }
 
   function clearOrbs() {
@@ -316,7 +519,6 @@ const sketch = (p) => {
 
   function startRoundReset(outcome) {
     roundOver = true;
-    roundMessage = outcome.message;
     roundResetAt = p.millis() + 1500;
     awardWin(outcome.winnerKey);
     freezeAllSprites();
@@ -353,8 +555,11 @@ const sketch = (p) => {
 
   function resetRound() {
     roundOver = false;
-    roundMessage = "";
     roundResetAt = 0;
+
+    // BUG FIX: reset the gameOver guard so the modal can re-show
+    // if the player triggers another match-over.
+    gameOverShown = false;
 
     const previousIndex = currentMapIndex;
     if (mazeLayout.length > 1) {
@@ -385,6 +590,7 @@ const sketch = (p) => {
     new p.Canvas(WIDTH, HEIGHT);
 
     gameState.bullet = new p.Group();
+    initBulletGroup(gameState.bullet);
     const config = getConfig();
     const modeString = config?.mode || "bot";
 
@@ -394,7 +600,6 @@ const sketch = (p) => {
 
     gameState.gameMode = mode;
 
-    // ---- Tank previews based on selected names ----
     const p1Name = config?.player1;
     let p1Index = tankCharacters.findIndex((t) => t.name === p1Name);
     if (p1Index < 0) p1Index = 0;
@@ -410,7 +615,6 @@ const sketch = (p) => {
     if (mode === 1) {
       createTankPreview("p2TankPreview", p2IndexFromConfig);
     }
-    // -----------------------------------------
 
     const wallsData = wallsColliderSetup(p, hWalls, vWalls, borderWalls);
     hWalls = wallsData.hWalls;
@@ -437,7 +641,6 @@ const sketch = (p) => {
       gameState.players = [players.player];
       gameState.bot = players.bot;
 
-      // Bot tank is random; use its character name for preview.
       if (gameState.bot && gameState.bot.character) {
         const botCharName = gameState.bot.character.name;
         let botIndex = tankCharacters.findIndex((t) => t.name === botCharName);
@@ -467,17 +670,17 @@ const sketch = (p) => {
   p.draw = () => {
     p.background(220);
 
-    // OPTIONAL: if we scheduled music but it wasn't ready then, start it when ready
+    // Poll: start music once the async load finishes (if it wasn't ready at map load time)
     if (!currentMusic && musicTracks.length > 0) {
-      const trackIndex = Math.max(
-        0,
-        Math.min(currentMapIndex, musicTracks.length - 1),
-      );
-      const state = bgmState[trackIndex];
-      if (state && state.sound && !state.sound.isPlaying()) {
-        state.sound.setVolume(0.6);
-        state.sound.loop();
-        currentMusic = state.sound;
+      const trackIndex = resolveTrackIndex(currentMapIndex);
+      if (trackIndex >= 0) {
+        const state = bgmState[trackIndex];
+        // BUG FIX: use the same BGM_VOLUME constant as playMapMusic()
+        if (state && state.sound && !state.sound.isPlaying()) {
+          state.sound.setVolume(BGM_VOLUME);
+          state.sound.loop();
+          currentMusic = state.sound;
+        }
       }
     }
 
@@ -513,13 +716,15 @@ const sketch = (p) => {
     });
 
     if (gameState.matchOver) {
-      if (gameOverUI) {
+      if (gameOverUI && !gameOverShown) {
+        gameOverShown = true;
         gameOverUI.show(gameState, {
           rematch: () => {
             gameState.score = { player1: 0, player2: 0, player: 0, bot: 0 };
             gameState.matchStartMs = p.millis();
             gameState.matchOver = false;
             roundOver = false;
+            gameOverShown = false;
             gameOverUI.hide();
             resetRound();
           },
@@ -536,6 +741,7 @@ const sketch = (p) => {
         gameState.matchStartMs = p.millis();
         gameState.matchOver = false;
         roundOver = false;
+        gameOverShown = false;
         if (gameOverUI) gameOverUI.hide();
         resetRound();
       }
@@ -553,6 +759,8 @@ const sketch = (p) => {
       }
       return;
     }
+
+    drawSpawnIndicators();
 
     // Update all players
     for (let player of gameState.players) {
@@ -577,6 +785,8 @@ const sketch = (p) => {
         }
         if (gameState.bot.target !== _closest)
           gameState.bot.setTarget(_closest);
+      } else if (gameState.bot.target) {
+        gameState.bot.setTarget(null);
       }
       gameState.bot.update(gameState.orbs);
     }
@@ -667,7 +877,7 @@ const sketch = (p) => {
     }
     p.noStroke();
 
-    // Handle bullet collisions (SELF-DAMAGE ENABLED)
+    // Handle bullet collisions
     for (let i = gameState.bullet.length - 1; i >= 0; i--) {
       const bullet = gameState.bullet[i];
       let hitTarget = false;
@@ -680,6 +890,8 @@ const sketch = (p) => {
         if (bullet._shooter === player && bulletAgeMs < selfGraceMs) continue;
 
         if (bullet.overlaps(player.sprite)) {
+          // calculateDamage now correctly reads bullet.life (fixed in helper.js).
+          // playerHit() now applies armor reduction (fixed in tank.js).
           const calcDamage = calculateDamage(bullet, p);
           player.playerHit(bullet, calcDamage);
           hitTarget = true;
@@ -733,23 +945,31 @@ const sketch = (p) => {
           }
         }
         if (touching) {
-          player.health -= _laserBurnDamage;
-          if (player.health < 0) player.health = 0;
+          // BUG FIX: laser burn previously applied `health -=` directly,
+          // bypassing playerHit() and therefore ignoring armor entirely.
+          // Now routes through playerHit() so armor is respected.
+          // We pass null as the bullet since the burn path doesn't have a
+          // discrete bullet sprite to remove — playerHit guards for this.
+          player.playerHit(null, _laserBurnDamage);
         }
       }
 
       if (gameState.bot && bullet._shooter !== gameState.bot) {
         let touching = false;
         for (const pt of bullet._pathPoints) {
-          const d = p.dist(pt.x, pt.y, gameState.bot.sprite.x, gameState.bot.sprite.y);
+          const d = p.dist(
+            pt.x,
+            pt.y,
+            gameState.bot.sprite.x,
+            gameState.bot.sprite.y,
+          );
           if (d < gameState.bot.sprite.diameter / 2 + _laserBurnRadius) {
             touching = true;
             break;
           }
         }
         if (touching) {
-          gameState.bot.health -= _laserBurnDamage;
-          if (gameState.bot.health < 0) gameState.bot.health = 0;
+          gameState.bot.playerHit(null, _laserBurnDamage);
         }
       }
     }

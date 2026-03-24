@@ -28,26 +28,13 @@ export class Orb {
 
   setOrbColor() {
     switch (this.type) {
-      case "speed":
-        this.sprite.color = "pink";
-        break;
-      case "damage":
-        this.sprite.color = "red";
-        break;
-      case "health":
-        this.sprite.color = "green";
-        break;
-      case "rapid":
-        this.sprite.color = "yellow";
-        break;
-      case "slow":
-        this.sprite.color = "purple";
-        break;
-      case "freeze":
-        this.sprite.color = "cyan";
-        break;
-      default:
-        this.sprite.color = "white";
+      case "speed":   this.sprite.color = "pink";   break;
+      case "damage":  this.sprite.color = "red";    break;
+      case "health":  this.sprite.color = "green";  break;
+      case "rapid":   this.sprite.color = "yellow"; break;
+      case "slow":    this.sprite.color = "purple"; break;
+      case "freeze":  this.sprite.color = "cyan";   break;
+      default:        this.sprite.color = "white";  break;
     }
   }
 
@@ -74,28 +61,18 @@ export class Orb {
     const duration = 5000;
     console.log(`Applying effect: ${this.type} to player`);
 
-    // Play SFX for supported orb types, if main.js registered the helper
+    // Play SFX if main.js registered the helper
     // @ts-ignore
     if (window.__mazyPlayOrbSfx) {
-      if (
-        this.type === "freeze" ||
-        this.type === "health" ||
-        this.type === "rapid" ||
-        this.type === "slow" ||
-        this.type === "speed" ||
-        this.type === "damage"
-      ) {
-        // @ts-ignore
-        window.__mazyPlayOrbSfx(this.type);
-      }
+      // @ts-ignore
+      window.__mazyPlayOrbSfx(this.type);
     }
-
-    // Track effect end time per orb type for HUD + logic
     if (!player.orbEffectEndTimes) {
       player.orbEffectEndTimes = {};
     }
 
-    const now = this.p.millis();
+    const now = performance.now();
+
     switch (this.type) {
       case "speed":
         player.applySpeedBoost(1.1, duration);
@@ -107,6 +84,7 @@ export class Orb {
         break;
       case "health":
         player.heal(30);
+        // Health orb is instant — show a brief 1-second flash on the HUD icon
         player.orbEffectEndTimes["health"] = now + 1000;
         break;
       case "rapid":

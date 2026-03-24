@@ -1,3 +1,5 @@
+//healthbar.js
+
 const clampPct = (value01) => {
   const v = Number(value01);
   if (!Number.isFinite(v)) return 0;

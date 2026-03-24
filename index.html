@@ -1,362 +1,451 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Mazy</title>
 
-    <link rel="stylesheet" href="./src/css/index.css">
+    <link rel="stylesheet" href="./src/css/index.css" />
 
     <script src="https://cdn.jsdelivr.net/npm/p5@1.11.4/lib/p5.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/p5@1.11.4/lib/addons/p5.sound.min.js"></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
-</head>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap"
+      rel="stylesheet"
+    />
+  </head>
 
-<body>
+  <body>
     <!-- ================= TITLE SCREEN ================= -->
     <div class="title-screen">
-        <h1 class="game-title">
-            <span>M</span><span>A</span><span>Z</span><span>Y</span>
-            <span>T</span><span>A</span><span>N</span><span>K</span>
-        </h1>
+      <h1 class="game-title">
+        <span>M</span><span>A</span><span>Z</span><span>Y</span> <span>T</span
+        ><span>A</span><span>N</span><span>K</span>
+      </h1>
 
-        <div class="menu">
-            <div class="start-buttons">
-                <button id="startButton" class="start-btn">Start Game</button>
-                <button id="tutorialButton" class="start-btn"> Tutorial </button>
-                <button id="optionsButton" class="start-btn"> Option </button>
-                <button id="creditsButton" class="start-btn"> Credits </button>
-            </div>
+      <div class="menu">
+        <div class="start-buttons">
+          <button id="startButton" class="start-btn">Start Game</button>
+          <button id="tutorialButton" class="start-btn">Tutorial</button>
+          <button id="optionsButton" class="start-btn">Option</button>
+          <button id="creditsButton" class="start-btn">Credits</button>
         </div>
+      </div>
 
-        <p class="footer">© 2026 Mazy Tank</p>
+      <p class="footer">© 2026 Mazy Tank</p>
     </div>
 
     <!-- ================= MODE SELECTION SCREEN ================= -->
-    <div id="mode-selection-screen" class="mode-selection" style="display:none;">
-        <h1 class="game-title">SELECT MODE</h1>
+    <div
+      id="mode-selection-screen"
+      class="mode-selection"
+      style="display: none"
+    >
+      <h1 class="game-title">SELECT MODE</h1>
 
-        <div class="mode-grid">
-            <div class="mode-card active" data-mode="bot">
-                <h2>V.S. BOT</h2>
-                <p>Fight against AI tanks</p>
-            </div>
+      <div class="mode-grid">
+        <div class="mode-card active" data-mode="bot">
+          <h2>V.S. BOT</h2>
+          <p>Fight against AI tanks</p>
+        </div>
 
-            <!-- <div class="mode-card" data-mode="coop">
+        <!-- <div class="mode-card" data-mode="coop">
                 <h2>CO-OP</h2>
                 <p>Team up against enemies</p>
             </div> -->
 
-            <div class="mode-card" data-mode="pvp">
-                <h2>PVP</h2>
-                <p>Player vs Player battle</p>
-            </div>
+        <div class="mode-card" data-mode="pvp">
+          <h2>PVP</h2>
+          <p>Player vs Player battle</p>
         </div>
+      </div>
 
-        <div class="play-bar">
-            <button id="backFromMode" class="menu-btn">BACK</button>
-            <button id="confirmModeButton" class="play-button">CONFIRM</button>
-        </div>
+      <div class="play-bar">
+        <button id="backFromMode" class="menu-btn">BACK</button>
+        <button id="confirmModeButton" class="play-button">CONFIRM</button>
+      </div>
     </div>
 
     <!-- ================= CHARACTER SELECTION SCREEN ================= -->
-    <div id="character-selection" style="display: none;">
-        <h1 class="title-character">CHARACTER SELECTION</h1>
+    <div id="character-selection" style="display: none">
+      <h1 class="title-character">CHARACTER SELECTION</h1>
 
-        <div class="character-row">
-            <!-- Player 1 -->
-            <div class="character-slot" id="player1">
-                <p class="player-label">Player 1</p>
-                <p class="control-hint">Select using W A S D keys | Confirm using Q key</p>
+      <div class="character-row">
+        <!-- Player 1 -->
+        <div class="character-slot" id="player1">
+          <p class="player-label">Player 1</p>
+          <p class="control-hint">
+            Select using W A S D keys | Confirm using SPACE key
+          </p>
 
-                <div class="character-box" data-player="1">
-                    <div class="lock-overlay"></div>
+          <div class="character-box" data-player="1">
+            <div class="lock-overlay"></div>
 
-                    <!-- TOP IMAGE AREA (your JS renders into p1Char) -->
-                    <div class="char-visual">
-                        <div class="char-display" id="p1Char"></div>
-                    </div>
-
-                    <!-- STATIC SPECIALTY / DESCRIPTION + STATS -->
-                    <div class="char-desc">
-                        <p>Description</p>
-                    </div>
-                    <div class="char-info">
-
-
-                        <div class="stat-row">
-                            <div class="stat">
-                                <span class="stat-label">Speed</span>
-                                <div class="stat-bar">
-                                    <div class="stat-fill" style="width: 35%;"></div>
-                                </div>
-                            </div>
-
-                            <div class="stat">
-                                <span class="stat-label">Damage</span>
-                                <div class="stat-bar">
-                                    <div class="stat-fill" style="width: 45%;"></div>
-                                </div>
-                            </div>
-
-                            <div class="stat">
-                                <span class="stat-label">Fire Rate</span>
-                                <div class="stat-bar">
-                                    <div class="stat-fill" style="width: 30%;"></div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="tank-name-bar">
-                        <span class="tank-name-text">Tank Name</span>
-                    </div>
-                </div>
+            <!-- TOP IMAGE AREA (your JS renders into p1Char) -->
+            <div class="char-visual">
+              <div class="char-display" id="p1Char"></div>
             </div>
 
-            <!-- Player 2 -->
-            <div class="character-slot" id="player2">
-                <p class="player-label">Player 2</p>
-                <p class="control-hint">Select using Arrow keys | Confirm using M key</p>
-
-                <div class="character-box" data-player="2">
-
-                    <div class="lock-overlay"></div>
-
-                    <!-- TOP IMAGE AREA (your JS renders into p2Char) -->
-                    <div class="char-visual">
-                        <div class="char-display" id="p2Char"></div>
-                    </div>
-
-                    <!-- STATIC SPECIALTY / DESCRIPTION + STATS -->
-                    <div class="char-desc">
-                        <p>Description</p>
-                    </div>
-                    <div class="char-info">
-
-
-                        <div class="stat-row">
-                            <div class="stat">
-                                <span class="stat-label">Speed</span>
-                                <div class="stat-bar">
-                                    <div class="stat-fill" style="width: 35%;"></div>
-                                </div>
-                            </div>
-
-                            <div class="stat">
-                                <span class="stat-label">Damage</span>
-                                <div class="stat-bar">
-                                    <div class="stat-fill" style="width: 45%;"></div>
-                                </div>
-                            </div>
-
-                            <div class="stat">
-                                <span class="stat-label">Fire Rate</span>
-                                <div class="stat-bar">
-                                    <div class="stat-fill" style="width: 30%;"></div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="tank-name-bar">
-                        <span class="tank-name-text">Tank Name</span>
-                    </div>
-                </div>
+            <!-- STATIC SPECIALTY / DESCRIPTION + STATS -->
+            <div class="char-desc">
+              <p>Description</p>
             </div>
+            <div class="char-info">
+              <div class="stat-row">
+                <div class="stat">
+                  <span class="stat-label">Speed</span>
+                  <div class="stat-bar">
+                    <div class="stat-fill" style="width: 35%"></div>
+                  </div>
+                </div>
+
+                <div class="stat">
+                  <span class="stat-label">Damage</span>
+                  <div class="stat-bar">
+                    <div class="stat-fill" style="width: 45%"></div>
+                  </div>
+                </div>
+
+                <div class="stat">
+                  <span class="stat-label">Fire Rate</span>
+                  <div class="stat-bar">
+                    <div class="stat-fill" style="width: 30%"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="tank-name-bar">
+              <span class="tank-name-text">Tank Name</span>
+            </div>
+          </div>
         </div>
 
-        <div class="start-bar">
-            <div class="character-actions">
-                <button id="backFromCharacter" class="menu-btn">Back</button>
-                <button id="mapSelectButton" class="play-button">Confirm</button>
-                <button id="resetCharacter" class="menu-btn">Reset</button>
+        <!-- Player 2 -->
+        <div class="character-slot" id="player2">
+          <p class="player-label">Player 2</p>
+          <p class="control-hint">
+            Select using Arrow keys | Confirm using ENTER key
+          </p>
+
+          <div class="character-box" data-player="2">
+            <div class="lock-overlay"></div>
+
+            <!-- TOP IMAGE AREA (your JS renders into p2Char) -->
+            <div class="char-visual">
+              <div class="char-display" id="p2Char"></div>
             </div>
+
+            <!-- STATIC SPECIALTY / DESCRIPTION + STATS -->
+            <div class="char-desc">
+              <p>Description</p>
+            </div>
+            <div class="char-info">
+              <div class="stat-row">
+                <div class="stat">
+                  <span class="stat-label">Speed</span>
+                  <div class="stat-bar">
+                    <div class="stat-fill" style="width: 35%"></div>
+                  </div>
+                </div>
+
+                <div class="stat">
+                  <span class="stat-label">Damage</span>
+                  <div class="stat-bar">
+                    <div class="stat-fill" style="width: 45%"></div>
+                  </div>
+                </div>
+
+                <div class="stat">
+                  <span class="stat-label">Fire Rate</span>
+                  <div class="stat-bar">
+                    <div class="stat-fill" style="width: 30%"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="tank-name-bar">
+              <span class="tank-name-text">Tank Name</span>
+            </div>
+          </div>
         </div>
+      </div>
+
+      <div class="start-bar">
+        <div class="character-actions">
+          <button id="backFromCharacter" class="menu-btn">Back</button>
+          <button id="mapSelectButton" class="play-button">Confirm</button>
+        </div>
+      </div>
     </div>
 
     <!-- ================= MAP SELECTION SCREEN ================= -->
-    <div class="map-selection" style="display: none;">
-        <h1 class="map-title">MAP SELECTION</h1>
+    <div class="map-selection" style="display: none">
+      <h1 class="map-title">MAP SELECTION</h1>
 
-        <div class="map-layout">
-            <!-- LEFT: Big preview (keep ID) -->
-            <div class="map-left">
-                <div class="map-preview-box" id="mapPreview"></div>
-            </div>
-
-            <!-- RIGHT: Name bar + grid + buttons -->
-            <div class="map-right">
-                <!-- keep ID (your JS likely updates this) -->
-                <div class="map-name-bar" id="mapName">MAP 1</div>
-
-                <div class="map-grid">
-                    <div class="map-thumb active" data-map="MAP 1" data-preview="/assets/maps/map-1.png"> </div>
-                    <div class="map-thumb" data-map="MAP 2" data-preview="/assets/maps/map-2.png"></div>
-                    <div class="map-thumb" data-map="MAP 3" data-preview="/assets/maps/map-3.png"></div>
-                    <div class="map-thumb" data-map="MAP 4" data-preview="/assets/maps/map-4.png"></div>
-                    <div class="map-thumb" data-map="MAP 5" data-preview="/assets/maps/map-5.png"></div>
-                    <div class="map-thumb" data-map="MAP 6" data-preview="/assets/maps/map-6.png"></div>
-                    <div class="map-thumb" data-map="MAP 7" data-preview="/assets/maps/map-7.png"></div>
-                    <div class="map-thumb" data-map="MAP 8" data-preview="/assets/maps/map-8.png"></div>
-                </div>
-
-                <div class="map-actions">
-                    <!-- NEW: Back button (doesn't change any existing IDs) -->
-                    <button class="menu-btn" id="backFromMap">BACK</button>
-
-                    <!-- keep ID -->
-                    <button class="play-button" id="playButton">PLAY</button>
-                </div>
-            </div>
+      <div class="map-layout">
+        <!-- LEFT: Big preview (keep ID) -->
+        <div class="map-left">
+          <div class="map-preview-box" id="mapPreview"></div>
         </div>
+
+        <!-- RIGHT: Name bar + grid + buttons -->
+        <div class="map-right">
+          <!-- keep ID (your JS likely updates this) -->
+          <div class="map-name-bar" id="mapName">MAP 1</div>
+
+          <div class="map-grid">
+            <div
+              class="map-thumb active"
+              data-map="MAP 1"
+              data-preview="/assets/maps/map-1.png"
+            ></div>
+            <div
+              class="map-thumb"
+              data-map="MAP 2"
+              data-preview="/assets/maps/map-2.png"
+            ></div>
+            <div
+              class="map-thumb"
+              data-map="MAP 3"
+              data-preview="/assets/maps/map-3.png"
+            ></div>
+            <div
+              class="map-thumb"
+              data-map="MAP 4"
+              data-preview="/assets/maps/map-4.png"
+            ></div>
+            <div
+              class="map-thumb"
+              data-map="MAP 5"
+              data-preview="/assets/maps/map-5.png"
+            ></div>
+            <div
+              class="map-thumb"
+              data-map="MAP 6"
+              data-preview="/assets/maps/map-6.png"
+            ></div>
+            <div
+              class="map-thumb"
+              data-map="MAP 7"
+              data-preview="/assets/maps/map-7.png"
+            ></div>
+            <div
+              class="map-thumb"
+              data-map="MAP 8"
+              data-preview="/assets/maps/map-8.png"
+            ></div>
+          </div>
+
+          <div class="map-actions">
+            <!-- NEW: Back button (doesn't change any existing IDs) -->
+            <button class="menu-btn" id="backFromMap">BACK</button>
+
+            <!-- keep ID -->
+            <button class="play-button" id="playButton">PLAY</button>
+          </div>
+        </div>
+      </div>
     </div>
 
-
-
     <!-- ================= TUTORIAL POPUP ================= -->
-    <div id="tutorialModal" class="modal" style="display:none;">
-        <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="tutorialTitle">
-            <div class="modal-header">
-                <h1 id="tutorialTitle" class="tutorial-title" style="font-size: 1.6rem;">TUTORIAL</h1>
-                <button id="closeTutorial" class="icon-btn" aria-label="Close tutorial">✕</button>
-            </div>
-
-            <div class="tutorial-body">
-                <div class="progress-dots" id="tutorialDots">
-                    <span class="dot active"></span>
-                    <span class="dot"></span>
-                    <span class="dot"></span>
-                    <span class="dot"></span>
-                </div>
-
-                <div class="slide-viewport">
-                    <div class="slides" id="tutorialSlides">
-                        <section class="slide active" data-step="1">
-                            <h2 class="slide-title">MOVEMENT</h2>
-                            <p class="slide-text">
-                                Use <b>W A S D</b> (Player 1) to move around the maze and avoid getting cornered.
-                            </p>
-                            <div class="slide-art">
-                                <div class="art-box">[ WASD ICON IMAGE/VIDEO PREVIEW ] </div>
-                            </div>
-                        </section>
-
-                        <section class="slide" data-step="2">
-                            <h2 class="slide-title">SHOOT</h2>
-                            <p class="slide-text">
-                                Press <b>SPACE</b> to fire. Your bullets can bounce, so use walls to hit enemies.
-                            </p>
-                            <div class="slide-art">
-                                <div class="art-box">[ SPACE / BULLET PREVIEW IMAGE ] </div>
-                            </div>
-                        </section>
-
-                        <section class="slide" data-step="3">
-                            <h2 class="slide-title">PVP</h2>
-                            <p class="slide-text">
-                                Player 2 uses <b>ARROW KEYS</b> to move and <b>ENTER</b> to shoot.
-                            </p>
-                            <div class="slide-art">
-                                <div class="art-box">[ ARROWS + ENTER PREVIEW IMAGE ] </div>
-                            </div>
-                        </section>
-
-                        <section class="slide" data-step="4">
-                            <h2 class="slide-title">WIN</h2>
-                            <p class="slide-text">
-                                Survive longer and outplay your opponent and win the game.
-                            </p>
-                            <div class="slide-art">
-                                <div class="art-box">[ TROPHY ]</div>
-                            </div>
-                        </section>
-                    </div>
-                </div>
-            </div>
-
-            <div class="modal-footer">
-                <button id="prevTutorial" class="menu-btn">◀ LEFT</button>
-
-                <div class="step-label" id="tutorialStepLabel">
-                    <span id="currentStep">1</span> / <span id="totalSteps">4</span>
-                </div>
-
-                <button id="nextTutorial" class="menu-btn">RIGHT ▶</button>
-            </div>
+    <div id="tutorialModal" class="modal" style="display: none">
+      <div
+        class="modal-card"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="tutorialTitle"
+      >
+        <div class="modal-header">
+          <h1
+            id="tutorialTitle"
+            class="tutorial-title"
+            style="font-size: 1.6rem"
+          >
+            TUTORIAL
+          </h1>
+          <button
+            id="closeTutorial"
+            class="icon-btn"
+            aria-label="Close tutorial"
+          >
+            ✕
+          </button>
         </div>
+
+        <div class="tutorial-body">
+          <div class="progress-dots" id="tutorialDots">
+            <span class="dot active"></span>
+            <span class="dot"></span>
+            <span class="dot"></span>
+            <span class="dot"></span>
+          </div>
+
+          <div class="slide-viewport">
+            <div class="slides" id="tutorialSlides">
+              <section class="slide active" data-step="1">
+                <h2 class="slide-title">MOVEMENT</h2>
+                <p class="slide-text">
+                  Use <b>W A S D</b> (Player 1) to move around the maze and
+                  avoid getting cornered.
+                </p>
+                <div class="slide-art">
+                  <div class="art-box">[ WASD ICON IMAGE/VIDEO PREVIEW ]</div>
+                </div>
+              </section>
+
+              <section class="slide" data-step="2">
+                <h2 class="slide-title">SHOOT</h2>
+                <p class="slide-text">
+                  Press <b>SPACE</b> to fire. Your bullets can bounce, so use
+                  walls to hit enemies.
+                </p>
+                <div class="slide-art">
+                  <div class="art-box">[ SPACE / BULLET PREVIEW IMAGE ]</div>
+                </div>
+              </section>
+
+              <section class="slide" data-step="3">
+                <h2 class="slide-title">PVP</h2>
+                <p class="slide-text">
+                  Player 2 uses <b>ARROW KEYS</b> to move and <b>ENTER</b> to
+                  shoot.
+                </p>
+                <div class="slide-art">
+                  <div class="art-box">[ ARROWS + ENTER PREVIEW IMAGE ]</div>
+                </div>
+              </section>
+
+              <section class="slide" data-step="4">
+                <h2 class="slide-title">WIN</h2>
+                <p class="slide-text">
+                  Survive longer and outplay your opponent and win the game.
+                </p>
+                <div class="slide-art">
+                  <div class="art-box">[ TROPHY ]</div>
+                </div>
+              </section>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button id="prevTutorial" class="menu-btn">◀ LEFT</button>
+
+          <div class="step-label" id="tutorialStepLabel">
+            <span id="currentStep">1</span> / <span id="totalSteps">4</span>
+          </div>
+
+          <button id="nextTutorial" class="menu-btn">RIGHT ▶</button>
+        </div>
+      </div>
     </div>
 
     <!-- ================= OPTIONS POPUP ================= -->
-    <div id="optionsModal" class="modal" style="display:none;">
-        <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="optionsTitle">
-
-            <div class="modal-header">
-                <h1 id="optionsTitle" class="tutorial-title" style="font-size: 1.6rem;">OPTIONS</h1>
-                <button id="closeOptions" class="icon-btn" aria-label="Close options">✕</button>
-            </div>
-
-            <div class="options-body">
-                <div class="option-row">
-                    <p class="option-label"> MUSIC </p>
-                    <input id="musicVolume" class="pixel-slider" type="range" min="0" max="100" value="80" />
-                    <p id="musicValue" class="option-value">80</p>
-                </div>
-
-                <div class="option-row">
-                    <p class="option-label"> SFX </p>
-                    <input id="sfxVolume" class="pixel-slider" type="range" min="0" max="100" value="70" />
-                    <p id="sfxValue" class="option-value">70</p>
-                </div>
-            </div>
-
-            <div class="modal-footer">
-                <button id="resetOptions" class="menu-btn">RESET</button>
-                <button id="closeOptionsBottom" class="menu-btn">DONE</button>
-            </div>
+    <div id="optionsModal" class="modal" style="display: none">
+      <div
+        class="modal-card"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="optionsTitle"
+      >
+        <div class="modal-header">
+          <h1
+            id="optionsTitle"
+            class="tutorial-title"
+            style="font-size: 1.6rem"
+          >
+            OPTIONS
+          </h1>
+          <button id="closeOptions" class="icon-btn" aria-label="Close options">
+            ✕
+          </button>
         </div>
+
+        <div class="options-body">
+          <div class="option-row">
+            <p class="option-label">MUSIC</p>
+            <input
+              id="musicVolume"
+              class="pixel-slider"
+              type="range"
+              min="0"
+              max="100"
+              value="80"
+            />
+            <p id="musicValue" class="option-value">80</p>
+          </div>
+
+          <div class="option-row">
+            <p class="option-label">SFX</p>
+            <input
+              id="sfxVolume"
+              class="pixel-slider"
+              type="range"
+              min="0"
+              max="100"
+              value="70"
+            />
+            <p id="sfxValue" class="option-value">70</p>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button id="closeOptionsBottom" class="menu-btn">DONE</button>
+        </div>
+      </div>
     </div>
 
     <!-- ================= CREDITS POPUP ================= -->
-    <div id="creditsModal" class="modal" style="display:none;">
-        <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="creditsTitle">
-
-            <div class="modal-header">
-                <h1 id="creditsTitle" class="tutorial-title" style="font-size: 1.6rem;">CREDITS</h1>
-                <button id="closeCredits" class="icon-btn" aria-label="Close credits">✕</button>
-            </div>
-
-            <div class="credits-body">
-                <div class="credits-panel">
-                    <p class="credits-line"><b>PROJECT:</b> MAZY TANK</p>
-                    <p class="credits-line"><b>YEAR:</b> 2026</p>
-                    <hr style="width:100%; margin: 18px 0;">
-
-                    <p class="credits-line"><b>DEVELOPERS:</b></p>
-                    <p class="credits-line">• Dagum, Nick Justine C.</p>
-                    <p class="credits-line">• Sabalboro, Denz Christian G.</p>
-
-                    <hr style="width:100%; margin: 18px 0;">
-
-                    <p class="credits-line"><b>TOOLS:</b></p>
-                    <p class="credits-line">• p5.js / p5.sound</p>
-                    <p class="credits-line">• HTML / CSS / JavaScript</p>
-
-                    <hr style="width:100%; margin: 18px 0;">
-
-                    <p class="credits-line"><b>THANK YOU FOR PLAYING!</b></p>
-                </div>
-            </div>
+    <div id="creditsModal" class="modal" style="display: none">
+      <div
+        class="modal-card"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="creditsTitle"
+      >
+        <div class="modal-header">
+          <h1
+            id="creditsTitle"
+            class="tutorial-title"
+            style="font-size: 1.6rem"
+          >
+            CREDITS
+          </h1>
+          <button id="closeCredits" class="icon-btn" aria-label="Close credits">
+            ✕
+          </button>
         </div>
+
+        <div class="credits-body">
+          <div class="credits-panel">
+            <p class="credits-line"><b>PROJECT:</b> MAZY TANK</p>
+            <p class="credits-line"><b>YEAR:</b> 2026</p>
+            <hr style="width: 100%; margin: 18px 0" />
+
+            <p class="credits-line"><b>DEVELOPERS:</b></p>
+            <p class="credits-line">• Dagum, Nick Justine C.</p>
+            <p class="credits-line">• Sabalboro, Denz Christian G.</p>
+
+            <hr style="width: 100%; margin: 18px 0" />
+
+            <p class="credits-line"><b>TOOLS:</b></p>
+            <p class="credits-line">• p5.js / p5.sound</p>
+            <p class="credits-line">• HTML / CSS / JavaScript</p>
+
+            <hr style="width: 100%; margin: 18px 0" />
+
+            <p class="credits-line"><b>THANK YOU FOR PLAYING!</b></p>
+          </div>
+        </div>
+      </div>
     </div>
 
     <div class="page-fade" aria-hidden="true"></div>
 
-
     <script type="module" src="./src/index.js"></script>
-</body>
-
+  </body>
 </html>

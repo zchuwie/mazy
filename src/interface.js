@@ -1,3 +1,5 @@
+//interface.js
+
 export const tankCharacters = [
     {
         name: 'Tank Alpha',

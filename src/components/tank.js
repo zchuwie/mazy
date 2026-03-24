@@ -1,5 +1,7 @@
+//tank.js
+
 const DEBUG = false;
-const log = (...args) => DEBUG && log(...args);
+const log = (...args) => DEBUG && console.log(...args);
 
 export class Tank {
   constructor(p, x, y, image, controls, bullet, character) {
@@ -69,21 +71,44 @@ export class Tank {
     // Burning effect state
     this.burningEndTime = null;
     this.lastBurnDamageTime = null;
-    this.burningDamagePerTick = 0.3; // Minimal damage per tick
+    this.burningDamagePerTick = 0.3;
+
+    this.orbEffectEndTimes = {};
+  }
+
+  resetEffects() {
+    this.activeEffects = [];
+    this.speedMultiplier = 1;
+    this.damageMultiplier = 1;
+    this.cooldownMultiplier = 1;
+    this.moveSpeed = this.baseSpeed * 0.75;
+
+    this.burningEndTime = null;
+    this.lastBurnDamageTime = null;
+
+    this.orbEffectEndTimes = {};
+
+    this.lastShotTime = 0;
   }
 
   update() {
     this.updateEffects();
+    const isFrozen = this.activeEffects.some(
+      (effect) => effect.type === "speed" && effect.value === 0
+    );
 
-    const isFrozen = this.activeEffects.some(effect => effect.type === "speed" && effect.value === 0);
+    if (isFrozen) {
+      this.sprite.speed = 0;
+      this.sprite.vel.x = 0;
+      this.sprite.vel.y = 0;
+      return; 
+    }
 
-    if (!isFrozen) {
-      if (this.p.kb.pressing(this.controls.left)) {
-        this.sprite.rotation -= this.rotationSpeed;
-      }
-      if (this.p.kb.pressing(this.controls.right)) {
-        this.sprite.rotation += this.rotationSpeed;
-      }
+    if (this.p.kb.pressing(this.controls.left)) {
+      this.sprite.rotation -= this.rotationSpeed;
+    }
+    if (this.p.kb.pressing(this.controls.right)) {
+      this.sprite.rotation += this.rotationSpeed;
     }
 
     const movingForward = this.p.kb.pressing(this.controls.forward);
@@ -98,19 +123,16 @@ export class Tank {
       this._intendedVy = Math.sin(angleRad) * this.moveSpeed * dir;
 
       if (this._blocked) {
-        // Check if still pushing in the same blocked direction
         const dot =
           this._intendedVx * this._lastBlockedNx +
           this._intendedVy * this._lastBlockedNy;
 
         if (dot > 0.1) {
-          // Still pushing into the wall — kill movement
           this.sprite.vel.x = 0;
           this.sprite.vel.y = 0;
           this.sprite.speed = 0;
           return;
         } else {
-          // Rotated away from wall — unblock
           this._blocked = false;
         }
       }
@@ -130,6 +152,7 @@ export class Tank {
 
   updateEffects() {
     const currentTime = this.p.millis();
+
     this.activeEffects = this.activeEffects.filter((effect) => {
       if (currentTime >= effect.endTime) {
         log(`Effect ${effect.type} expired`);
@@ -140,8 +163,12 @@ export class Tank {
 
     // Apply burning damage
     if (this.burningEndTime && currentTime < this.burningEndTime) {
-      if (!this.lastBurnDamageTime || currentTime - this.lastBurnDamageTime >= 100) {
+      if (
+        !this.lastBurnDamageTime ||
+        currentTime - this.lastBurnDamageTime >= 100
+      ) {
         this.health -= this.burningDamagePerTick;
+        if (this.health < 0) this.health = 0;
         this.lastBurnDamageTime = currentTime;
         log(`Burning damage: ${this.burningDamagePerTick} HP`);
       }
@@ -201,8 +228,13 @@ export class Tank {
 
   applyBurning(duration) {
     log(`Applying burning effect for ${duration}ms`);
-    this.burningEndTime = this.p.millis() + duration;
-    this.lastBurnDamageTime = this.p.millis();
+    const proposedEnd = this.p.millis() + duration;
+    if (this.burningEndTime && this.burningEndTime > this.p.millis()) {
+      this.burningEndTime = Math.max(this.burningEndTime, proposedEnd);
+    } else {
+      this.burningEndTime = proposedEnd;
+      this.lastBurnDamageTime = this.p.millis();
+    }
   }
 
   heal(amount) {
@@ -223,13 +255,11 @@ export class Tank {
       log(`Firing DUAL bullets`);
       const sideOffset = 10;
       const perpAngleRad = this.p.radians(this.sprite.rotation);
-      
-      // Left bullet
+
       const leftX = bulletX + sideOffset * Math.cos(perpAngleRad);
       const leftY = bulletY + sideOffset * Math.sin(perpAngleRad);
       this.createSingleBullet(leftX, leftY, this.sprite.rotation - 90);
-      
-      // Right bullet
+
       const rightX = bulletX - sideOffset * Math.cos(perpAngleRad);
       const rightY = bulletY - sideOffset * Math.sin(perpAngleRad);
       this.createSingleBullet(rightX, rightY, this.sprite.rotation - 90);
@@ -243,7 +273,7 @@ export class Tank {
     bullet.direction = direction;
     bullet.speed = this.bulletSpeed;
     bullet.diameter = this.bulletDiameter;
-    bullet.life = this.bulletLife; 
+    bullet.life = this.bulletLife; // calculateDamage reads bullet.life (fixed in helper.js)
     bullet._createdAt = this.p.millis();
     bullet._startX = x;
     bullet._startY = y;
@@ -251,7 +281,7 @@ export class Tank {
     bullet._shooter = this;
 
     log(
-      `${this.bulletType} bullet | dmg: ${bullet._damage} | spd: ${bullet.speed} | life: ${bullet.life}`,
+      `${this.bulletType} bullet | dmg: ${bullet._damage} | spd: ${bullet.speed} | life: ${bullet.life}`
     );
     return bullet;
   }
@@ -281,7 +311,7 @@ export class Tank {
     laserBullet.direction = direction;
     laserBullet.speed = this.bulletSpeed;
     laserBullet.diameter = 8;
-    laserBullet.life = this.bulletLife; 
+    laserBullet.life = this.bulletLife;
     laserBullet.color = "#FFD700";
     laserBullet.bounciness = 1;
     laserBullet.friction = 0;
@@ -297,16 +327,23 @@ export class Tank {
     laserBullet._maxPathLength = 50;
 
     log(
-      `Laser fired | dmg: ${laserBullet._damage} | spd: ${laserBullet.speed} | life: ${laserBullet.life}`,
+      `Laser fired | dmg: ${laserBullet._damage} | spd: ${laserBullet.speed} | life: ${laserBullet.life}`
     );
   }
-
   playerHit(bullet, damage) {
     if (bullet && bullet.remove) bullet.remove();
-    const finalDamage = damage || bullet._damage || 20;
-    log(
-      `Player hit for ${finalDamage} damage. Health: ${this.health} -> ${this.health - finalDamage}`,
+
+    const rawDamage = damage ?? bullet?._damage ?? 20;
+    const armor = this.character?.armor ?? 0;
+    const finalDamage = Math.round(
+      rawDamage * (1 - Math.max(0, Math.min(1, armor)))
     );
+
+    log(
+      `Player hit | raw: ${rawDamage} | armor: ${armor} | final: ${finalDamage} | ` +
+      `HP: ${this.health} → ${Math.max(0, this.health - finalDamage)}`
+    );
+
     this.health -= finalDamage;
     if (this.health < 0) this.health = 0;
   }
