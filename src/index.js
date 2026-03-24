@@ -62,8 +62,11 @@ function updateCharacterPanel(playerId, tankIndex) {
   // Stat fills: order is Speed, Damage, Fire Rate
   const statFills = slot.querySelectorAll(".stat .stat-fill");
   if (statFills.length >= 3) {
+    // @ts-ignore
     statFills[0].style.width = `${speedPercent(tank.baseSpeed)}%`;
+    // @ts-ignore
     statFills[1].style.width = `${damagePercent(tank.baseDamage)}%`;
+    // @ts-ignore
     statFills[2].style.width = `${fireRatePercent(tank.shootCooldown)}%`;
   }
 }

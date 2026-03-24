@@ -829,20 +829,17 @@ hr {
 
 /* Individual mode card */
 .mode-card {
-  width: 200px;
-  height: 220px;
-
-  background: #7dbcf6;
   border: 4px solid #201453;
   box-shadow: 6px 6px 0 #142853;
-
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 14px;
-
+  background: #7dbcf6;
   cursor: pointer;
   transition: all 0.15s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 18px 16px;
+  gap: 6px;
 }
 
 .mode-card h2 {
@@ -983,6 +980,60 @@ hr {
   gap: 14px;
 }
 
+/* Tutorial menu with description and 3 buttons in a row */
+.tutorial-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  align-items: center;
+}
+
+.tutorial-description {
+  font-size: 0.75rem;
+  color: #001763;
+  max-width: 600px;
+  text-align: center;
+  line-height: 1.5;
+}
+
+/* Horizontal button row */
+.tutorial-buttons-row {
+  display: flex;
+  justify-content: center;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+
+.tutorial-section-btn {
+  width: 160px;
+  padding: 16px 12px;
+  font-size: 0.7rem;
+  color: #020617;
+  background: #7dbcf6;
+  border: 3px solid #201453;
+  box-shadow: 3px 3px 0 #142853;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: center;
+}
+
+.tutorial-section-btn:hover {
+  background: #59d4fa;
+  transform: translate(-2px, -2px);
+  box-shadow: 5px 5px 0 #142853;
+}
+
+.tutorial-section-btn:active {
+  transform: translate(1px, 1px);
+  box-shadow: 2px 2px 0 #142853;
+}
+
+.tutorial-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
 .progress-dots {
   display: flex;
   justify-content: center;
@@ -1065,6 +1116,34 @@ hr {
   font-size: 0.6rem;
 }
 
+.movement-art {
+  background: #004ff8;
+}
+
+/* Use the SVG's intrinsic size (900x600) for movement art,
+   but allow it to shrink responsively if needed */
+.art-box.movement-art {
+  width: 700px;
+  height: 470px;
+  max-width: 100%;
+  max-height: 100%;
+}
+
+/* Larger tutorial art box size shared by all SVG slides */
+.art-box.tutorial-art {
+  width: 700px;
+  height: 470px;
+  max-width: 100%;
+  max-height: 100%;
+}
+
+.movement-svg {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
 .modal-footer {
   display: flex;
   align-items: center;
@@ -1089,32 +1168,6 @@ hr {
   text-shadow:
     2px 2px 0 #380092,
     0 0 15px rgb(168, 245, 255);
-}
-
-/* options layout */
-.options-body {
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-}
-
-.option-row {
-  display: grid;
-  grid-template-columns: 220px 1fr 60px;
-  align-items: center;
-  gap: 14px;
-
-  border: 3px solid #201453;
-  background: #7dbcf6;
-  box-shadow: 4px 4px 0 #142853;
-  padding: 14px;
-  border-radius: 12px;
-}
-
-.option-label {
-  font-size: 0.65rem;
-  color: #001763;
-  text-align: left;
 }
 
 .option-value {
