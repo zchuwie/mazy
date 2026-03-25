@@ -983,7 +983,7 @@ const sketch = (p) => {
   // --------- SETUP / DRAW ---------
 
   p.setup = () => {
-    p.playIntro = false;
+    p.p5play.playIntro = false;
     new p.Canvas(WIDTH, HEIGHT);
 
     gameState.bullet = new p.Group();
