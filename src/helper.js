@@ -52,18 +52,19 @@ export function wallsColliderSetup(p, hWalls, vWalls, borderWalls) {
     hWalls.h = 12;
     hWalls.tile = "-";
     hWalls.collider = "static";
-    hWalls.color = "black";
+    // Darker single-color neon walls (teal)
+    hWalls.color = "#163436";
 
     vWalls = new p.Group();
     vWalls.w = 12;
     vWalls.h = 87;
     vWalls.tile = "/";
     vWalls.collider = "static";
-    vWalls.color = "black";
+    vWalls.color = "#163436";
 
     borderWalls = new p.Group();
     borderWalls.collider = "static";
-    borderWalls.color = "black";
+    borderWalls.color = "#258a8f";
 
     new borderWalls.Sprite(WIDTH / 2, HEALTHBARHEIGHT, WIDTH, 5);
     new borderWalls.Sprite(WIDTH / 2, HEIGHT, WIDTH, 10);

@@ -68,7 +68,14 @@ export function createTankPreview(containerId, tankIndex) {
 
     p.draw = () => {
       p.clear();
-      p.background(80); // neutral bg inside box; outer border from CSS
+      // Linear gradient background similar to CSS:
+      // background: linear-gradient(135deg, #7dbcf6 0%, #59d4fa 100%);
+      const ctx = p.drawingContext;
+      const grad = ctx.createLinearGradient(0, p.height, p.width, 0);
+      grad.addColorStop(0, "#7dbcf6");
+      grad.addColorStop(1, "#59d4fa");
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, p.width, p.height);
 
       if (!img) return;
 

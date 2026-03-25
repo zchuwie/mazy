@@ -277,7 +277,7 @@ body::before {
   width: 100%;
   height: auto;
   aspect-ratio: 16 / 9;
-  background: linear-gradient(135deg, #888 0%, #444 100%);
+  background: linear-gradient(135deg, #7dbcf6 0%, #59d4fa 100%);
   border: 4px solid #222;
   border-radius: 0;
   display: flex;

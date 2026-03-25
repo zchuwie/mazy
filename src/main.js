@@ -741,6 +741,65 @@ const sketch = (p) => {
     setSpawnIndicators(appliedSpawns);
   }
 
+  // Soft glow behind maze walls for a neon effect
+  function drawWallGlow() {
+    const groups = [hWalls, vWalls, borderWalls];
+    p.push();
+    p.noStroke();
+    p.rectMode(p.CENTER);
+    // Teal glow using hex with transparency
+    const glowColor = p.color("#a0f6fa");
+    glowColor.setAlpha(120);
+    p.fill(glowColor);
+
+    for (const g of groups) {
+      if (!g) continue;
+      for (const s of g) {
+        if (!s) continue;
+        const w = s.w || s.width || 0;
+        const h = s.h || s.height || 0;
+        if (!w || !h) continue;
+        const pad = 10;
+        p.rect(s.x, s.y, w + pad, h + pad, 6);
+      }
+    }
+
+    p.pop();
+  }
+
+  // Glow around active orbs for extra visibility
+  function drawOrbGlow() {
+    if (!Array.isArray(gameState.orbs) || gameState.orbs.length === 0) return;
+
+    const typeColors = {
+      speed: "#ffb5ff",
+      damage: "#ff6868",
+      health: "#6bff9a",
+      rapid: "#ffe26b",
+      slow: "#c6a0ff",
+      freeze: "#9ae8ff",
+    };
+
+    p.push();
+    p.noStroke();
+    p.ellipseMode(p.CENTER);
+
+    for (const orb of gameState.orbs) {
+      if (!orb || !orb.sprite || !orb.active) continue;
+
+      const baseHex = typeColors[orb.type] || "#ffffff";
+      const glowColor = p.color(baseHex);
+      glowColor.setAlpha(140);
+      p.fill(glowColor);
+
+      const d = orb.sprite.diameter || 30;
+      const radiusBoost = 18;
+      p.circle(orb.sprite.x, orb.sprite.y, d + radiusBoost);
+    }
+
+    p.pop();
+  }
+
   function freezeAllSprites() {
     const allTanks = [...gameState.players];
     if (gameState.bot) allTanks.push(gameState.bot);
@@ -1014,7 +1073,23 @@ const sketch = (p) => {
   };
 
   p.draw = () => {
-    p.background(220);
+    // Retro sci-fi background with a light neon grid
+    p.background(80, 120, 190);
+
+    p.push();
+    const gridSize = 48;
+    p.stroke(80, 220, 255, 110);
+    p.strokeWeight(1.5);
+    for (let x = 0; x <= p.width; x += gridSize) {
+      p.line(x, 0, x, p.height);
+    }
+    for (let y = 0; y <= p.height; y += gridSize) {
+      p.line(0, y, p.width, y);
+    }
+    p.pop();
+
+    // Neon glow around maze walls
+    drawWallGlow();
 
     // If paused: freeze everything, including indicators
     if (gamePaused) {
@@ -1166,6 +1241,9 @@ const sketch = (p) => {
     }
 
     drawSpawnIndicators();
+
+    // Orb glow (behind sprites but over walls/grid)
+    drawOrbGlow();
 
     // Update all players
     for (let player of gameState.players) {
