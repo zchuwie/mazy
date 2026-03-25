@@ -1,4 +1,4 @@
-<!-- arena.html (UPDATED) -->
+<!-- arena.html (RETRO ARCADE HUD - WITH GAME OVER + PAUSE MODALS) -->
 <!doctype html>
 <html lang="en">
   <head>
@@ -18,46 +18,815 @@
     <div class="arena-shell">
       <!-- LEFT HUD -->
       <div class="hud hud-left">
-        <div id="p1Name" class="hud-title">PLAYER 1</div>
-        <div class="hud-bar">
-          <div id="p1HpFill" class="hud-bar-fill"></div>
-        </div>
+        <div class="hud-content">
+          <!-- Player Name -->
+          <div id="p1Name" class="hud-title">PLAYER 1</div>
 
-        <!-- (optional) life circles placeholder (kept empty for now) -->
-        <div class="hud-lives">
-          <span class="life"></span><span class="life"></span
-          ><span class="life"></span> <span class="life"></span
-          ><span class="life"></span><span class="life"></span>
+          <!-- Health Bar -->
+          <div class="hud-bar">
+            <div id="p1HpFill" class="hud-bar-fill"></div>
+          </div>
+
+          <!-- Orbs / Powerups (Player 1) -->
+          <div class="hud-orb hud-orb-p1">
+            <img
+              class="orb-icon"
+              data-orb-type="speed"
+              src="./assets/orbs/inactive/speed-inactive.png"
+              alt="Speed Orb"
+            />
+            <img
+              class="orb-icon"
+              data-orb-type="damage"
+              src="./assets/orbs/inactive/damage-inactive.png"
+              alt="Damage Orb"
+            />
+            <img
+              class="orb-icon"
+              data-orb-type="health"
+              src="./assets/orbs/inactive/health-inactive.png"
+              alt="Health Orb"
+            />
+            <img
+              class="orb-icon"
+              data-orb-type="rapid"
+              src="./assets/orbs/inactive/rapidfire-inactive.png"
+              alt="Rapid Fire Orb"
+            />
+            <img
+              class="orb-icon"
+              data-orb-type="slow"
+              src="./assets/orbs/inactive/slow-inactive.png"
+              alt="Slow Orb"
+            />
+            <img
+              class="orb-icon"
+              data-orb-type="freeze"
+              src="./assets/orbs/inactive/freeze-inactive.png"
+              alt="Freeze Orb"
+            />
+          </div>
+
+          <!-- Score Section -->
+          <div class="score-section">
+            <div class="score-label">Score</div>
+            <div id="p1Score" class="score-value">0</div>
+          </div>
+
+          <!-- Controls Section - BIG ARCADE BUTTONS -->
+          <div class="controls-section">
+            <!-- Move Label -->
+            <div class="control-label-text">MOVEMENT</div>
+            <!-- Move Controls -->
+            <div class="control-item">
+              <span class="control-key">A</span>
+              <span class="control-key">W</span>
+              <span class="control-key">D</span>
+              <span class="control-key">S</span>
+            </div>
+
+            <!-- Shoot Label -->
+            <div class="control-label-text">SHOOT</div>
+            <!-- Shoot Button -->
+            <div class="control-item">
+              <span class="control-key">SPACE</span>
+            </div>
+          </div>
+
+          <!-- Tank Placeholder at Bottom - FULL WIDTH -->
+          <div id="p1TankPreview" class="tank-placeholder">🎮</div>
         </div>
       </div>
 
       <!-- CENTER -->
       <div class="arena-center">
-        <div class="top-timer" id="matchTimerText">TIME REMAINING : --:--</div>
+        <div class="top-timer">
+          <button class="home-btn" id="homeBtn">||</button>
+          <div id="matchTimerText">TIME REMAINING : --:--</div>
+          <div style="width: 50px"></div>
+        </div>
 
-        <!-- UNCHANGED ID -->
+        <!-- MAIN ARENA -->
         <main id="main-box"></main>
       </div>
 
       <!-- RIGHT HUD -->
       <div class="hud hud-right">
-        <div id="p2Name" class="hud-title">PLAYER 2</div>
-        <div class="hud-bar">
-          <div id="p2HpFill" class="hud-bar-fill"></div>
+        <div class="hud-content">
+          <!-- Player/Bot Name -->
+          <div id="p2Name" class="hud-title">PLAYER 2</div>
+
+          <!-- Health Bar -->
+          <div class="hud-bar">
+            <div id="p2HpFill" class="hud-bar-fill"></div>
+          </div>
+
+          <!-- Orbs / Powerups (Player 2 or Bot) -->
+          <div class="hud-orb hud-orb-p2">
+            <img
+              class="orb-icon"
+              data-orb-type="speed"
+              src="./assets/orbs/inactive/speed-inactive.png"
+              alt="Speed Orb"
+            />
+            <img
+              class="orb-icon"
+              data-orb-type="damage"
+              src="./assets/orbs/inactive/damage-inactive.png"
+              alt="Damage Orb"
+            />
+            <img
+              class="orb-icon"
+              data-orb-type="health"
+              src="./assets/orbs/inactive/health-inactive.png"
+              alt="Health Orb"
+            />
+            <img
+              class="orb-icon"
+              data-orb-type="rapid"
+              src="./assets/orbs/inactive/rapidfire-inactive.png"
+              alt="Rapid Fire Orb"
+            />
+            <img
+              class="orb-icon"
+              data-orb-type="slow"
+              src="./assets/orbs/inactive/slow-inactive.png"
+              alt="Slow Orb"
+            />
+            <img
+              class="orb-icon"
+              data-orb-type="freeze"
+              src="./assets/orbs/inactive/freeze-inactive.png"
+              alt="Freeze Orb"
+            />
+          </div>
+
+          <!-- Score Section -->
+          <div class="score-section">
+            <div class="score-label">Score</div>
+            <div id="p2Score" class="score-value">0</div>
+          </div>
+
+          <!-- Controls Section - BIG ARCADE BUTTONS -->
+          <div id="p2ControlsSection" class="controls-section">
+            <!-- Move Label -->
+            <div class="control-label-text">MOVEMENT</div>
+            <!-- Move Controls -->
+            <div class="control-item">
+              <span class="control-key">↼ </span>
+              <span class="control-key">↾</span>
+              <span class="control-key">⇀</span>
+              <span class="control-key">⇂</span>
+            </div>
+
+            <!-- Shoot Label -->
+            <div class="control-label-text">SHOOT</div>
+            <!-- Shoot Button -->
+            <div class="control-item">
+              <span class="control-key">ENTER</span>
+            </div>
+          </div>
+
+          <!-- Tank Placeholder at Bottom - FULL WIDTH -->
+          <div id="p2TankPreview" class="tank-placeholder">🎮</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= COUNTDOWN OVERLAY ================= -->
+    <div id="countdownOverlay" class="countdown-overlay" style="display: none">
+      <div id="countdownText" class="countdown-text">3</div>
+    </div>
+
+    <!-- ================= GAME OVER MODAL ================= -->
+    <div id="gameOverModal" class="game-over-modal" style="display: none">
+      <div class="game-over-container">
+        <!-- Title -->
+        <div class="game-over-title">GAME OVER</div>
+
+        <!-- Winner Section -->
+        <div class="winner-section">
+          <div id="winnerMessage" class="winner-message">PLAYER 1 WINS</div>
         </div>
 
-        <div class="hud-lives">
-          <span class="life"></span><span class="life"></span
-          ><span class="life"></span> <span class="life"></span
-          ><span class="life"></span><span class="life"></span>
+        <!-- Final Score Section -->
+        <div class="final-score-section">
+          <div class="final-score-label">FINAL SCORE</div>
+          <div class="score-comparison">
+            <div class="score-row">
+              <span id="scoreP1Name" class="score-name">PLAYER 1</span>
+              <span id="scoreP1Value" class="score-number">0</span>
+            </div>
+            <div class="score-divider"></div>
+            <div class="score-row">
+              <span id="scoreP2Name" class="score-name">PLAYER 2</span>
+              <span id="scoreP2Value" class="score-number">0</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="game-over-buttons">
+          <button id="rematchBtn" class="game-over-btn rematch-btn">
+            REMATCH
+          </button>
+          <button id="menuBtn" class="game-over-btn menu-btn">MENU</button>
+        </div>
+
+        <!-- Keyboard Hint -->
+        <div class="keyboard-hint">
+          Press R for Rematch or ESC for Main Menu
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= ROUND WINNER BANNER ================= -->
+    <div
+      id="roundWinnerBanner"
+      class="round-winner-banner"
+      style="display: none"
+    >
+      <div class="banner-content">
+        <div id="roundWinnerText" class="banner-text">
+          PLAYER 2 WINS THIS ROUND
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= PAUSE MENU ================= -->
+    <div id="pauseModal" class="modal" style="display: none">
+      <div class="modal-card pause-container">
+        <div class="pause-title">GAME PAUSED</div>
+
+        <div class="pause-menu">
+          <button id="pauseContinueBtn" class="pause-btn">CONTINUE</button>
+          <button id="pauseOptionsBtn" class="pause-btn">OPTIONS</button>
+          <button id="pauseTutorialBtn" class="pause-btn">TUTORIAL</button>
+          <button id="pauseMainMenuBtn" class="pause-btn">MAIN MENU</button>
+        </div>
+
+        <div class="pause-hint">Press ESC to Resume</div>
+      </div>
+    </div>
+
+    <!-- ================= OPTIONS POPUP (ARENA) ================= -->
+    <div id="optionsModal" class="modal" style="display: none">
+      <div
+        class="modal-card"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="optionsTitle"
+      >
+        <div class="modal-header">
+          <h1
+            id="optionsTitle"
+            class="tutorial-title"
+            style="font-size: 1.6rem"
+          >
+            OPTIONS
+          </h1>
+          <button id="closeOptions" class="icon-btn" aria-label="Close options">
+            ✕
+          </button>
+        </div>
+
+        <div class="options-body">
+          <div class="option-row">
+            <p class="option-label">MUSIC</p>
+            <input
+              id="musicVolume"
+              class="pixel-slider"
+              type="range"
+              min="0"
+              max="100"
+              value="80"
+            />
+            <p id="musicValue" class="option-value">80</p>
+          </div>
+
+          <div class="option-row">
+            <p class="option-label">SFX</p>
+            <input
+              id="sfxVolume"
+              class="pixel-slider"
+              type="range"
+              min="0"
+              max="100"
+              value="70"
+            />
+            <p id="sfxValue" class="option-value">70</p>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button id="closeOptionsBottom" class="menu-btn">DONE</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= TUTORIAL POPUP (ARENA) ================= -->
+    <div id="tutorialModal" class="modal" style="display: none">
+      <div
+        class="modal-card"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="tutorialTitle"
+      >
+        <div class="modal-header">
+          <h1
+            id="tutorialTitle"
+            class="tutorial-title"
+            style="font-size: 1.6rem"
+          >
+            TUTORIAL
+          </h1>
+          <button
+            id="closeTutorial"
+            class="icon-btn"
+            aria-label="Close tutorial"
+          >
+            ✕
+          </button>
+        </div>
+
+        <div class="tutorial-body">
+          <div class="progress-dots" id="tutorialDots">
+            <span class="dot active"></span>
+            <span class="dot"></span>
+            <span class="dot"></span>
+            <span class="dot"></span>
+            <span class="dot"></span>
+            <span class="dot"></span>
+          </div>
+
+          <div class="slide-viewport">
+            <div class="slides" id="tutorialSlides">
+              <section class="slide active" data-step="1">
+                <h2 class="slide-title">MOVEMENT</h2>
+                <p class="slide-text">
+                  Use <b>W A S D</b> (Player 1) to move around the maze and
+                  avoid getting cornered.
+                </p>
+                <div class="slide-art">
+                  <div class="art-box movement-art tutorial-art">
+                    <img
+                      src="./assets/tutorial image/movement.svg"
+                      alt="Movement controls"
+                      class="movement-svg"
+                    />
+                  </div>
+                </div>
+              </section>
+
+              <section class="slide" data-step="2">
+                <h2 class="slide-title">SHOOT</h2>
+                <p class="slide-text">
+                  Press <b>SPACE</b> to fire. Your bullets can bounce, so use
+                  walls to hit enemies.
+                </p>
+                <div class="slide-art">
+                  <div class="art-box tutorial-art">
+                    <img
+                      src="./assets/tutorial image/shoot.svg"
+                      alt="Shoot controls"
+                      class="movement-svg"
+                    />
+                  </div>
+                </div>
+              </section>
+
+              <section class="slide" data-step="3">
+                <h2 class="slide-title">PVP</h2>
+                <p class="slide-text">
+                  Player 2 uses <b>ARROW KEYS</b> to move and <b>ENTER</b> to
+                  shoot.
+                </p>
+                <div class="slide-art">
+                  <div class="art-box tutorial-art">
+                    <img
+                      src="./assets/tutorial image/pvp.svg"
+                      alt="PVP controls"
+                      class="movement-svg"
+                    />
+                  </div>
+                </div>
+              </section>
+
+              <section class="slide" data-step="4">
+                <h2 class="slide-title">ORB</h2>
+                <p class="slide-text">
+                  Get Orb to gain temporary buffs to help you turn the tide of
+                  battle. Orb spawns randomly in the maze
+                </p>
+                <div class="slide-art">
+                  <div class="art-box tutorial-art">
+                    <img
+                      src="./assets/tutorial image/special-orb.svg"
+                      alt="Special orb"
+                      class="movement-svg"
+                    />
+                  </div>
+                </div>
+              </section>
+
+              <section class="slide" data-step="5">
+                <h2 class="slide-title">ROUNDS</h2>
+                <p class="slide-text">
+                  Each time a player destroys a tank, they earn one point for
+                  that round.
+                </p>
+                <div class="slide-art">
+                  <div class="art-box tutorial-art">
+                    <img
+                      src="./assets/tutorial image/round.svg"
+                      alt="Rounds progress"
+                      class="movement-svg"
+                    />
+                  </div>
+                </div>
+              </section>
+
+              <section class="slide" data-step="5">
+                <h2 class="slide-title">WIN</h2>
+                <p class="slide-text">
+                  Survive longer and outplay your opponent and win the game.
+                </p>
+                <div class="slide-art">
+                  <div class="art-box tutorial-art">
+                    <img
+                      src="./assets/tutorial image/winner.svg"
+                      alt="Winner trophy"
+                      class="movement-svg"
+                    />
+                  </div>
+                </div>
+              </section>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button id="prevTutorial" class="menu-btn">◀ LEFT</button>
+
+          <div class="step-label" id="tutorialStepLabel">
+            <span id="currentStep">1</span> / <span id="totalSteps">4</span>
+          </div>
+
+          <button id="nextTutorial" class="menu-btn">RIGHT ▶</button>
         </div>
       </div>
     </div>
 
     <script>
+      // Global object to receive actions from main.js
+      window.gameOverActions = {};
+
       document.addEventListener("DOMContentLoaded", () => {
+        // Fade-in overlay for arena
         requestAnimationFrame(() => {
           document.body.classList.add("is-fading-in");
+        });
+
+        const homeBtn = document.getElementById("homeBtn");
+        const pauseModal = document.getElementById("pauseModal");
+        const pauseContinueBtn = document.getElementById("pauseContinueBtn");
+        const pauseMainMenuBtn = document.getElementById("pauseMainMenuBtn");
+        const pauseOptionsBtn = document.getElementById("pauseOptionsBtn");
+        const pauseTutorialBtn = document.getElementById("pauseTutorialBtn");
+        const p2ControlsSection = document.getElementById("p2ControlsSection");
+        const p2Name = document.getElementById("p2Name");
+
+        const p2ControlsDefaultMarkup = p2ControlsSection
+          ? p2ControlsSection.innerHTML
+          : "";
+
+        function getGameConfig() {
+          try {
+            const raw = sessionStorage.getItem("gameConfig");
+            return raw ? JSON.parse(raw) : null;
+          } catch {
+            return null;
+          }
+        }
+
+        function syncRightControlsPanel() {
+          if (!p2ControlsSection) return;
+
+          const config = getGameConfig();
+          const modeIsBot = config?.mode === "bot";
+          const labelIsBot =
+            (p2Name?.textContent || "").trim().toUpperCase() === "BOT";
+
+          if (!modeIsBot && !labelIsBot) {
+            p2ControlsSection.innerHTML = p2ControlsDefaultMarkup;
+            return;
+          }
+
+          const difficulty = String(config?.difficulty || "hard").toUpperCase();
+          p2ControlsSection.innerHTML = `
+            <div class="control-label-text">BOT</div>
+            <div class="control-item"><span class="control-key">Try Your Best!</span></div>
+            <div class="control-item">AUTO MOVEMENT + SHOOT</div>
+            <div class="control-item">COUNTER WITH ORBS AND DODGE ITS BULLETS!</div>
+          `;
+        }
+
+        syncRightControlsPanel();
+
+        if (p2Name) {
+          const p2NameObserver = new MutationObserver(() => {
+            syncRightControlsPanel();
+          });
+
+          p2NameObserver.observe(p2Name, {
+            childList: true,
+            subtree: true,
+            characterData: true,
+          });
+        }
+
+        // Tutorial state (arena)
+        let tutorialStepIndex = 0;
+        let tutorialSlides = [];
+        let tutorialDots = [];
+
+        function renderTutorial() {
+          if (!tutorialSlides.length || !tutorialDots.length) return;
+
+          tutorialSlides.forEach((s, i) => {
+            if (s instanceof HTMLElement) {
+              s.classList.toggle("active", i === tutorialStepIndex);
+            }
+          });
+
+          tutorialDots.forEach((d, i) => {
+            if (d instanceof HTMLElement) {
+              d.classList.toggle("active", i === tutorialStepIndex);
+            }
+          });
+
+          const currentStepEl = document.getElementById("currentStep");
+          const totalStepsEl = document.getElementById("totalSteps");
+
+          if (currentStepEl)
+            currentStepEl.textContent = String(tutorialStepIndex + 1);
+          if (totalStepsEl)
+            totalStepsEl.textContent = String(tutorialSlides.length);
+
+          const prevBtn = document.getElementById("prevTutorial");
+          const nextBtn = document.getElementById("nextTutorial");
+
+          if (prevBtn instanceof HTMLButtonElement) {
+            prevBtn.disabled = tutorialStepIndex === 0;
+            prevBtn.style.opacity = prevBtn.disabled ? "0.5" : "1";
+          }
+
+          if (nextBtn instanceof HTMLButtonElement) {
+            nextBtn.disabled = tutorialStepIndex === tutorialSlides.length - 1;
+            nextBtn.style.opacity = nextBtn.disabled ? "0.5" : "1";
+          }
+        }
+
+        function openTutorial() {
+          const modal = document.getElementById("tutorialModal");
+          if (!modal) return;
+          modal.style.display = "flex";
+          tutorialStepIndex = 0;
+          renderTutorial();
+        }
+
+        function closeTutorialModal() {
+          const modal = document.getElementById("tutorialModal");
+          if (!modal) return;
+          modal.style.display = "none";
+        }
+
+        function attachUiSounds(button) {
+          if (!button) return;
+          button.addEventListener("click", () => {
+            window.__mazyPlayUiClick?.();
+          });
+          button.addEventListener("mouseenter", () => {
+            window.__mazyPlayUiHover?.();
+          });
+        }
+
+        // --- PAUSE MENU HELPERS (HTML side) ---
+        function showPauseModal() {
+          if (pauseModal) pauseModal.style.display = "flex";
+        }
+
+        function hidePauseModal() {
+          if (pauseModal) pauseModal.style.display = "none";
+        }
+
+        // Home button opens pause menu instead of going straight home
+        if (homeBtn) {
+          attachUiSounds(homeBtn);
+          homeBtn.addEventListener("click", () => {
+            window.__mazyTogglePause?.(true);
+          });
+        }
+
+        // Continue button
+        if (pauseContinueBtn) {
+          attachUiSounds(pauseContinueBtn);
+          pauseContinueBtn.addEventListener("click", () => {
+            window.__mazyTogglePause?.(false);
+          });
+        }
+
+        // Main menu button from pause
+        if (pauseMainMenuBtn) {
+          attachUiSounds(pauseMainMenuBtn);
+          pauseMainMenuBtn.addEventListener("click", () => {
+            window.__mazyPauseGoToMenu?.();
+          });
+        }
+
+        // Options: open in-arena options modal
+        const optionsModal = document.getElementById("optionsModal");
+        const closeOptions = document.getElementById("closeOptions");
+        const closeOptionsBottom =
+          document.getElementById("closeOptionsBottom");
+
+        if (pauseOptionsBtn) {
+          attachUiSounds(pauseOptionsBtn);
+          pauseOptionsBtn.addEventListener("click", () => {
+            if (optionsModal) optionsModal.style.display = "flex";
+          });
+        }
+
+        function closeOptionsModal() {
+          if (optionsModal) optionsModal.style.display = "none";
+        }
+
+        if (closeOptions) {
+          attachUiSounds(closeOptions);
+          closeOptions.addEventListener("click", () => {
+            closeOptionsModal();
+          });
+        }
+
+        if (closeOptionsBottom) {
+          attachUiSounds(closeOptionsBottom);
+          closeOptionsBottom.addEventListener("click", () => {
+            closeOptionsModal();
+          });
+        }
+
+        if (optionsModal) {
+          optionsModal.addEventListener("click", (e) => {
+            if (e.target === optionsModal) closeOptionsModal();
+          });
+        }
+
+        // Options slider labels (local to arena)
+        const musicVolume = document.getElementById("musicVolume");
+        const sfxVolume = document.getElementById("sfxVolume");
+        const musicValue = document.getElementById("musicValue");
+        const sfxValue = document.getElementById("sfxValue");
+
+        function syncArenaOptionsUI() {
+          if (musicVolume instanceof HTMLInputElement && musicValue) {
+            musicValue.textContent = musicVolume.value;
+          }
+          if (sfxVolume instanceof HTMLInputElement && sfxValue) {
+            sfxValue.textContent = sfxVolume.value;
+          }
+        }
+
+        // Load saved volumes from sessionStorage so arena options
+        // reflect the same global settings as the main menu.
+        const savedMusic = sessionStorage.getItem("musicVolume");
+        const savedSfx = sessionStorage.getItem("sfxVolume");
+
+        if (musicVolume instanceof HTMLInputElement && savedMusic != null) {
+          musicVolume.value = savedMusic;
+        }
+        if (sfxVolume instanceof HTMLInputElement && savedSfx != null) {
+          sfxVolume.value = savedSfx;
+        }
+
+        syncArenaOptionsUI();
+
+        if (musicVolume instanceof HTMLInputElement) {
+          musicVolume.addEventListener("input", () => {
+            if (musicValue) musicValue.textContent = musicVolume.value;
+
+            // Persist and apply new music volume globally
+            sessionStorage.setItem("musicVolume", musicVolume.value);
+            if (window.__mazyApplyMusicVolume) {
+              window.__mazyApplyMusicVolume();
+            }
+          });
+        }
+
+        if (sfxVolume instanceof HTMLInputElement) {
+          sfxVolume.addEventListener("input", () => {
+            if (sfxValue) sfxValue.textContent = sfxVolume.value;
+
+            // Persist and apply new SFX volume globally
+            sessionStorage.setItem("sfxVolume", sfxVolume.value);
+            if (window.__mazyApplySfxVolume) {
+              window.__mazyApplySfxVolume();
+            }
+          });
+        }
+
+        // Tutorial from pause -> open in-arena tutorial modal
+        if (pauseTutorialBtn) {
+          attachUiSounds(pauseTutorialBtn);
+          pauseTutorialBtn.addEventListener("click", () => {
+            openTutorial();
+          });
+        }
+
+        // Tutorial controls wiring
+        tutorialSlides = Array.from(
+          document.querySelectorAll("#tutorialSlides .slide"),
+        );
+        tutorialDots = Array.from(
+          document.querySelectorAll("#tutorialDots .dot"),
+        );
+
+        const closeTutorial = document.getElementById("closeTutorial");
+        const prevTutorial = document.getElementById("prevTutorial");
+        const nextTutorial = document.getElementById("nextTutorial");
+        const tutorialModal = document.getElementById("tutorialModal");
+
+        if (closeTutorial) {
+          attachUiSounds(closeTutorial);
+          closeTutorial.addEventListener("click", () => {
+            closeTutorialModal();
+          });
+        }
+
+        if (prevTutorial) {
+          attachUiSounds(prevTutorial);
+          prevTutorial.addEventListener("click", () => {
+            if (tutorialStepIndex > 0) tutorialStepIndex--;
+            renderTutorial();
+          });
+        }
+
+        if (nextTutorial) {
+          attachUiSounds(nextTutorial);
+          nextTutorial.addEventListener("click", () => {
+            if (tutorialStepIndex < tutorialSlides.length - 1)
+              tutorialStepIndex++;
+            renderTutorial();
+          });
+        }
+
+        if (tutorialModal) {
+          tutorialModal.addEventListener("click", (e) => {
+            if (e.target === tutorialModal) closeTutorialModal();
+          });
+        }
+
+        // Expose minimal DOM pause APIs so main.js can control visibility
+        window.__mazyPauseUI = {
+          show: showPauseModal,
+          hide: hidePauseModal,
+        };
+
+        // Game Over Button Handlers
+        const rematchBtn = document.getElementById("rematchBtn");
+        const menuBtn = document.getElementById("menuBtn");
+
+        if (rematchBtn) {
+          attachUiSounds(rematchBtn);
+          rematchBtn.addEventListener("click", () => {
+            window.gameOverActions?.rematch?.();
+          });
+        }
+
+        if (menuBtn) {
+          attachUiSounds(menuBtn);
+          menuBtn.addEventListener("click", () => {
+            window.gameOverActions?.menu?.();
+          });
+        }
+        // Tutorial keyboard controls (ArrowLeft/ArrowRight/Escape)
+        document.addEventListener("keydown", (e) => {
+          const modal = document.getElementById("tutorialModal");
+          if (!modal || modal.style.display !== "flex") return;
+
+          if (e.key === "Escape") {
+            closeTutorialModal();
+          }
+
+          if (e.key === "ArrowLeft") {
+            if (tutorialStepIndex > 0) tutorialStepIndex--;
+            renderTutorial();
+          }
+
+          if (e.key === "ArrowRight") {
+            if (tutorialStepIndex < tutorialSlides.length - 1)
+              tutorialStepIndex++;
+            renderTutorial();
+          }
         });
       });
     </script>

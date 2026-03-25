@@ -1,7 +1,10 @@
-// ./src/main.js (FULL UPDATED)
-
+// src/main.js
 import { Orb } from "./components/orb.js";
 import { updateHud } from "./components/healthbar.js";
+// @ts-ignore
+import { initGameOverUI } from "./components/gameOver.js";
+// @ts-ignore
+import { initRoundWinnerBanner } from "./components/roundWinner.js";
 import {
   preloadImages,
   wallsColliderSetup,
@@ -18,6 +21,9 @@ import {
   OFFSETY,
   orbTypes,
   mazeLayout,
+  musicTracks,
+  tankCharacters,
+  orbSfx,
 } from "./interface.js";
 import {
   renderArenaConfig,
@@ -25,14 +31,54 @@ import {
   determineMapSelection,
 } from "./config.js";
 import { renderOrbSpawn } from "./mechanics.js";
+import { createTankPreview } from "./components/tankPreview.js";
 
 const sketch = (p) => {
   let hWalls, vWalls, borderWalls;
   let tilesGroup = null;
   let currentMapIndex = 0;
   let roundOver = false;
-  let roundMessage = "";
   let roundResetAt = 0;
+  let gameOverUI = null;
+  let roundWinnerBanner = null;
+
+  // Guard so gameOverUI.show() is only called once per match-over.
+  let gameOverShown = false;
+
+  // Pause state
+  let gamePaused = false;
+  let pauseStartedAt = 0;
+  let totalPausedMs = 0;
+
+  // Countdown state
+  let roundStarting = false;
+  let isFirstRoundOfMatch = true;
+
+  // ---- MUSIC STATE (ASYNC / NON-BLOCKING) ----
+  const bgmState = musicTracks.map(() => ({
+    sound: null,
+    loading: false,
+    failed: false,
+  }));
+  let currentMusic = null;
+  let warnedTrackClamp = false;
+
+  // ---- CORE COMBAT SFX (NORMAL SHOT / LASER SHOT / HIT / DESTROYED) ----
+  let fireSfxNormal = null;
+  let fireSfxLaser = null;
+  let hitSfx = null;
+  let destroyedSfx = null;
+
+  // ---- UI BUTTON SFX (CLICK / HOVER) ----
+  let uiClickSfx = null;
+  let uiHoverSfx = null;
+
+  // ---- GAME OVER AUDIO ----
+  let gameOverAnnounce = null; // short "Game Over" VO / sting
+  let gameOverMusic = null; // looped game-over track
+
+  // ---- COUNTDOWN AUDIO ----
+  let countdownSfx = null;
 
   let gameState = {
     players: [],
@@ -51,10 +97,431 @@ const sketch = (p) => {
     matchStartMs: 0,
     matchDurationSeconds: 0,
     matchOver: false,
+    spawnIndicators: [],
+    spawnIndicatorUntil: 0,
   };
+
+  const SPAWN_INDICATOR_DURATION_MS = 1800;
+
+  function initBulletGroup(group) {
+    if (!group || group._initialized) return;
+    group.diameter = 8;
+    group.color = "black";
+    group.bounciness = 1;
+    group.friction = 0;
+    group.drag = 0;
+    group._initialized = true;
+  }
+
+  // --------- MUSIC HELPERS (NON-BLOCKING) ---------
+
+  function stopCurrentMusic() {
+    if (currentMusic && currentMusic.isPlaying && currentMusic.isPlaying()) {
+      currentMusic.stop();
+    }
+    currentMusic = null;
+  }
+
+  function ensureTrackLoaded(index) {
+    const state = bgmState[index];
+    if (!state || state.loading || state.sound || state.failed) return;
+
+    state.loading = true;
+    const file = musicTracks[index]?.file;
+    if (!file) {
+      state.failed = true;
+      return;
+    }
+
+    p.loadSound(
+      file,
+      (snd) => {
+        state.sound = snd;
+        state.loading = false;
+        state.failed = false;
+      },
+      (err) => {
+        console.error("Failed to load music track:", file, err);
+        state.loading = false;
+        state.failed = true;
+      },
+    );
+  }
+
+  const BGM_VOLUME = 0.4;
+
+  function getMusicVolumeFactor() {
+    try {
+      const stored = sessionStorage.getItem("musicVolume");
+      const parsed = stored != null ? Number.parseInt(stored, 10) : NaN;
+      if (!Number.isFinite(parsed)) return 0.8; // default 80%
+      const clamped = Math.max(0, Math.min(parsed, 100));
+      return clamped / 100;
+    } catch (e) {
+      return 0.8;
+    }
+  }
+
+  function resolveTrackIndex(mapIndex) {
+    if (!musicTracks || musicTracks.length === 0) return -1;
+
+    // Always use the first track (MAP 1) for arena BGM,
+    // regardless of which map is selected.
+    return 0;
+  }
+
+  function playMapMusic(mapIndex) {
+    stopCurrentMusic();
+
+    if (!musicTracks || musicTracks.length === 0) return;
+
+    const trackIndex = resolveTrackIndex(mapIndex);
+    if (trackIndex < 0) return;
+    const state = bgmState[trackIndex];
+
+    ensureTrackLoaded(trackIndex);
+
+    if (state.sound) {
+      const factor = getMusicVolumeFactor();
+      state.sound.setVolume(BGM_VOLUME * factor);
+      state.sound.loop();
+      currentMusic = state.sound;
+    } else {
+      currentMusic = null;
+    }
+  }
+
+  function applyMusicVolumeFromSettings() {
+    if (currentMusic && currentMusic.setVolume) {
+      const factor = getMusicVolumeFactor();
+      currentMusic.setVolume(BGM_VOLUME * factor);
+    }
+  }
+
+  // ---- ORB SFX (SHORT ONE-SHOTS, PRELOADED) ----
+  const orbSfxState = {};
+
+  function getSfxVolumeFactor() {
+    try {
+      const stored = sessionStorage.getItem("sfxVolume");
+      const parsed = stored != null ? Number.parseInt(stored, 10) : NaN;
+      if (!Number.isFinite(parsed)) return 0.7; // default 70%
+      const clamped = Math.max(0, Math.min(parsed, 100));
+      return clamped / 100;
+    } catch (e) {
+      return 0.7;
+    }
+  }
+
+  function playOrbSfx(type) {
+    const state = orbSfxState[type];
+    if (!state || !state.sound || state.failed) return;
+    state.sound.play();
+  }
+
+  // Expose orb SFX helper globally for orb.js
+  // @ts-ignore
+  window.__mazyPlayOrbSfx = playOrbSfx;
+
+  // ---- COMBAT SFX HELPERS (NORMAL SHOT / LASER SHOT / HIT / DESTROYED) ----
+
+  function playFireSfxNormal() {
+    if (fireSfxNormal && fireSfxNormal.isLoaded && fireSfxNormal.isLoaded()) {
+      fireSfxNormal.play();
+    }
+  }
+
+  function playFireSfxLaser() {
+    if (fireSfxLaser && fireSfxLaser.isLoaded && fireSfxLaser.isLoaded()) {
+      fireSfxLaser.play();
+    }
+  }
+
+  function playHitSfx() {
+    if (hitSfx && hitSfx.isLoaded && hitSfx.isLoaded()) hitSfx.play();
+  }
+
+  function playDestroyedSfx() {
+    if (destroyedSfx && destroyedSfx.isLoaded && destroyedSfx.isLoaded()) {
+      destroyedSfx.play();
+    }
+  }
+
+  function playUiClick() {
+    if (uiClickSfx && uiClickSfx.isLoaded && uiClickSfx.isLoaded()) {
+      uiClickSfx.play();
+    }
+  }
+
+  function playUiHover() {
+    if (uiHoverSfx && uiHoverSfx.isLoaded && uiHoverSfx.isLoaded()) {
+      uiHoverSfx.play();
+    }
+  }
+
+  function applySfxVolumeFromSettings() {
+    const factor = getSfxVolumeFactor();
+
+    // Orb SFX
+    for (const key in orbSfxState) {
+      if (!Object.prototype.hasOwnProperty.call(orbSfxState, key)) continue;
+      const s = orbSfxState[key]?.sound;
+      if (s && s.setVolume) s.setVolume(factor);
+    }
+
+    // Core combat SFX
+    if (fireSfxNormal && fireSfxNormal.setVolume)
+      fireSfxNormal.setVolume(factor);
+    if (fireSfxLaser && fireSfxLaser.setVolume) fireSfxLaser.setVolume(factor);
+    if (hitSfx && hitSfx.setVolume) hitSfx.setVolume(factor);
+    if (destroyedSfx && destroyedSfx.setVolume) destroyedSfx.setVolume(factor);
+
+    // UI button SFX
+    if (uiClickSfx && uiClickSfx.setVolume) uiClickSfx.setVolume(factor);
+    if (uiHoverSfx && uiHoverSfx.setVolume) uiHoverSfx.setVolume(factor);
+
+    // Game over and countdown audio
+    if (gameOverAnnounce && gameOverAnnounce.setVolume)
+      gameOverAnnounce.setVolume(factor);
+    if (gameOverMusic && gameOverMusic.setVolume)
+      gameOverMusic.setVolume(factor);
+    if (countdownSfx && countdownSfx.setVolume) countdownSfx.setVolume(factor);
+  }
+
+  // Game over audio helpers
+  function playGameOverAudio() {
+    // Stop current map music first
+    stopCurrentMusic();
+
+    if (gameOverAnnounce && gameOverAnnounce.isLoaded()) {
+      gameOverAnnounce.play();
+    }
+
+    if (gameOverMusic && gameOverMusic.isLoaded()) {
+      // small delay so the announcement isn't buried
+      const delay = gameOverAnnounce ? 0.6 : 0;
+      gameOverMusic.stop();
+      gameOverMusic.setLoop(true);
+      gameOverMusic.setVolume(0.8);
+      gameOverMusic.play(delay);
+    }
+  }
+
+  function stopGameOverMusic() {
+    if (gameOverMusic && gameOverMusic.isPlaying()) {
+      gameOverMusic.stop();
+    }
+  }
+
+  // --------- PAUSE HELPERS ---------
+  function setPaused(paused) {
+    if (paused === gamePaused) return;
+
+    if (paused) {
+      // starting a pause
+      pauseStartedAt = p.millis();
+    } else {
+      // ending a pause: accumulate paused time
+      if (pauseStartedAt > 0) {
+        totalPausedMs += p.millis() - pauseStartedAt;
+        pauseStartedAt = 0;
+      }
+    }
+
+    gamePaused = paused;
+
+    // Notify DOM to show/hide pause modal if available
+    // @ts-ignore
+    if (window.__mazyPauseUI) {
+      if (paused) {
+        // @ts-ignore
+        window.__mazyPauseUI.show?.();
+      } else {
+        // @ts-ignore
+        window.__mazyPauseUI.hide?.();
+      }
+    }
+  }
+
+  function togglePause(forceValue) {
+    const next = typeof forceValue === "boolean" ? forceValue : !gamePaused;
+    // Do not allow pausing when match is over (game over UI is showing)
+    if (gameState.matchOver) return;
+    // Also do not pause during countdown
+    if (roundStarting) return;
+    setPaused(next);
+  }
+
+  // Let arena.html JS call these
+  // @ts-ignore
+  window.__mazyTogglePause = togglePause;
+  // @ts-ignore
+  window.__mazyPauseGoToMenu = () => {
+    sessionStorage.removeItem("gameConfig");
+    stopCurrentMusic();
+    window.location.href = "index.html";
+  };
+
+  // Allow DOM (arena options modal) to reapply music volume
+  // when the user changes the MUSIC slider.
+  // @ts-ignore
+  window.__mazyApplyMusicVolume = applyMusicVolumeFromSettings;
+
+  // Allow DOM (arena options modal) to reapply SFX volume
+  // when the user changes the SFX slider.
+  // @ts-ignore
+  window.__mazyApplySfxVolume = applySfxVolumeFromSettings;
+
+  // Expose combat SFX helpers globally so tank.js can call them
+  // @ts-ignore
+  window.__mazyPlayFireSfxNormal = playFireSfxNormal;
+  // @ts-ignore
+  window.__mazyPlayFireSfxLaser = playFireSfxLaser;
+  // @ts-ignore
+  window.__mazyPlayHitSfx = playHitSfx;
+  // @ts-ignore
+  window.__mazyPlayDestroyedSfx = playDestroyedSfx;
+
+  // Expose UI SFX helpers globally so arena.html can call them
+  // @ts-ignore
+  window.__mazyPlayUiClick = playUiClick;
+  // @ts-ignore
+  window.__mazyPlayUiHover = playUiHover;
+
+  // --------- COUNTDOWN HELPERS (UI-like, simple) ---------
+
+  function showCountdownOverlay(text) {
+    const overlay = document.getElementById("countdownOverlay");
+    const label = document.getElementById("countdownText");
+    if (overlay) overlay.style.display = "flex";
+    if (label) label.textContent = text;
+  }
+
+  function hideCountdownOverlay() {
+    const overlay = document.getElementById("countdownOverlay");
+    if (overlay) overlay.style.display = "none";
+  }
+
+  function startRoundCountdown() {
+    roundStarting = true;
+    gamePaused = false; // ensure gameplay isn't paused instead
+
+    const steps = ["3", "2", "1", "GO!"];
+    const stepDurationMs = 800;
+    let index = 0;
+
+    const playStep = () => {
+      if (!roundStarting) return;
+      const text = steps[index];
+      showCountdownOverlay(text);
+
+      if (index === 0) {
+        // Play countdown sfx once
+        if (countdownSfx && countdownSfx.isLoaded && countdownSfx.isLoaded()) {
+          countdownSfx.stop();
+          countdownSfx.play();
+        }
+      }
+
+      index += 1;
+      if (index < steps.length) {
+        setTimeout(playStep, stepDurationMs);
+      } else {
+        setTimeout(() => {
+          hideCountdownOverlay();
+          roundStarting = false;
+          gameState.matchStartMs = p.millis();
+        }, stepDurationMs);
+      }
+    };
+
+    playStep();
+  }
+
+  // --------- PRELOAD / MAP RENDERING ---------
 
   p.preload = () => {
     preloadImages(p);
+
+    // Preload orb SFX
+    for (const type in orbSfx) {
+      if (!Object.prototype.hasOwnProperty.call(orbSfx, type)) continue;
+      const path = orbSfx[type];
+      orbSfxState[type] = { sound: null, failed: false };
+
+      orbSfxState[type].sound = p.loadSound(
+        path,
+        (snd) => {
+          snd.setVolume(getSfxVolumeFactor());
+        },
+        (err) => {
+          console.error("Failed to preload orb SFX:", type, path, err);
+          orbSfxState[type].failed = true;
+        },
+      );
+    }
+
+    // === CORE COMBAT SFX ===
+    fireSfxNormal = p.loadSound(
+      "/assets/audio/sfx/pop.mp3",
+      (snd) => snd.setVolume(getSfxVolumeFactor()),
+      (err) => console.error("Failed to load normal shot SFX", err),
+    );
+
+    // Laser shot (Delta)
+    fireSfxLaser = p.loadSound(
+      "/assets/audio/sfx/laser-shot.mp3",
+      (snd) => snd.setVolume(getSfxVolumeFactor()),
+      (err) => console.error("Failed to load laser-shot.mp3", err),
+    );
+
+    hitSfx = p.loadSound(
+      "/assets/audio/sfx/hit.wav",
+      (snd) => snd.setVolume(getSfxVolumeFactor()),
+      (err) => console.error("Failed to load hit.wav", err),
+    );
+
+    destroyedSfx = p.loadSound(
+      "/assets/audio/sfx/destroyed.wav",
+      (snd) => snd.setVolume(getSfxVolumeFactor()),
+      (err) => console.error("Failed to load destroyed.wav", err),
+    );
+
+    // === UI BUTTON SFX ===
+    uiClickSfx = p.loadSound(
+      "/assets/audio/sfx/button-select.mp3",
+      (snd) => snd.setVolume(getSfxVolumeFactor()),
+      (err) => console.error("Failed to load button-select.mp3", err),
+    );
+
+    uiHoverSfx = p.loadSound(
+      "/assets/audio/sfx/hover-button.wav",
+      (snd) => snd.setVolume(getSfxVolumeFactor()),
+      (err) => console.error("Failed to load hover-button.wav", err),
+    );
+
+    // === GAME OVER AUDIO ===
+    gameOverAnnounce = p.loadSound(
+      "/assets/audio/bgm/game-over-announcement.wav",
+      (snd) => snd.setVolume(getSfxVolumeFactor()),
+      (err) => console.error("Failed to load game-over-announcement.wav", err),
+    );
+
+    gameOverMusic = p.loadSound(
+      "/assets/audio/bgm/game-over.mp3",
+      (snd) => {
+        snd.setVolume(getSfxVolumeFactor());
+        snd.setLoop(true);
+      },
+      (err) => console.error("Failed to load game-over.mp3", err),
+    );
+
+    // === COUNTDOWN AUDIO ===
+    countdownSfx = p.loadSound(
+      "/assets/audio/sfx/countdown.wav",
+      (snd) => snd.setVolume(getSfxVolumeFactor()),
+      (err) => console.error("Failed to load countdown.wav", err),
+    );
   };
 
   function renderMap(mapIndex) {
@@ -67,6 +534,9 @@ const sketch = (p) => {
       TILEH,
       OFFSETY,
     );
+
+    playMapMusic(mapIndex);
+
     return selected;
   }
 
@@ -90,33 +560,264 @@ const sketch = (p) => {
     tilesGroup = null;
   }
 
+  function getRandomHallwaySpawns(count) {
+    const points = Array.isArray(gameState.hallwayPositions)
+      ? gameState.hallwayPositions
+      : [];
+
+    if (points.length < count) return null;
+
+    const SPAWN_TANK_DIAMETER = 45;
+    const MIN_SPAWN_GAP = 120;
+
+    function circleHitsWall(x, y, radius, wall) {
+      if (!wall) return false;
+
+      const wallW = wall.w || wall.width || 0;
+      const wallH = wall.h || wall.height || 0;
+      const halfW = wallW / 2;
+      const halfH = wallH / 2;
+
+      const dx = Math.abs(x - wall.x);
+      const dy = Math.abs(y - wall.y);
+      const ox = Math.max(dx - halfW, 0);
+      const oy = Math.max(dy - halfH, 0);
+
+      return ox * ox + oy * oy < radius * radius;
+    }
+
+    function isSpawnPointClear(x, y, diameter) {
+      const radius = diameter / 2;
+      const groups = [hWalls, vWalls, borderWalls];
+
+      for (const group of groups) {
+        if (!group || typeof group.length !== "number") continue;
+        for (let i = 0; i < group.length; i++) {
+          if (circleHitsWall(x, y, radius, group[i])) {
+            return false;
+          }
+        }
+      }
+
+      return true;
+    }
+
+    const validPoints = points.filter((pt) =>
+      isSpawnPointClear(pt.x, pt.y, SPAWN_TANK_DIAMETER),
+    );
+    const source = validPoints.length >= count ? validPoints : points;
+
+    const pool = [...source];
+    const picks = [];
+    for (let i = 0; i < count; i++) {
+      if (pool.length === 0) break;
+
+      let chosen = null;
+      for (let attempt = 0; attempt < 25; attempt++) {
+        const idx = Math.floor(p.random(pool.length));
+        const candidate = pool[idx];
+
+        const isFarEnough = picks.every(
+          (picked) =>
+            Math.hypot(candidate.x - picked.x, candidate.y - picked.y) >=
+            MIN_SPAWN_GAP,
+        );
+
+        if (isFarEnough || pool.length === 1) {
+          chosen = candidate;
+          pool.splice(idx, 1);
+          break;
+        }
+      }
+
+      if (!chosen) {
+        const idx = Math.floor(p.random(pool.length));
+        chosen = pool[idx];
+        pool.splice(idx, 1);
+      }
+
+      picks.push(chosen);
+    }
+
+    return picks.length === count ? picks : null;
+  }
+
+  function setSpawnIndicators(spawnPoints) {
+    gameState.spawnIndicators = Array.isArray(spawnPoints)
+      ? [...spawnPoints]
+      : [];
+    gameState.spawnIndicatorUntil = p.millis() + SPAWN_INDICATOR_DURATION_MS;
+  }
+
+  function drawSpawnIndicators() {
+    const points = gameState.spawnIndicators;
+    if (!Array.isArray(points) || points.length === 0) return;
+
+    const now = p.millis();
+    if (now >= gameState.spawnIndicatorUntil) return;
+
+    const t = now / 170;
+    const pulse = 0.5 + 0.5 * Math.sin(t);
+    const life =
+      Math.max(0, gameState.spawnIndicatorUntil - now) /
+      SPAWN_INDICATOR_DURATION_MS;
+    const alpha = 130 + 125 * life;
+
+    p.push();
+    p.strokeWeight(6);
+
+    for (const pt of points) {
+      const outer = 56 + pulse * 24;
+      const inner = 26 + pulse * 10;
+      const core = 10 + pulse * 6;
+
+      p.noFill();
+      p.stroke(255, 0, 180, alpha);
+      p.circle(pt.x, pt.y, outer);
+
+      p.stroke(255, 70, 210, alpha);
+      p.circle(pt.x, pt.y, inner);
+
+      p.noStroke();
+      p.fill(255, 35, 190, 90 + 80 * pulse);
+      p.circle(pt.x, pt.y, core);
+
+      p.stroke(255, 255, 255, alpha);
+      p.strokeWeight(4);
+      p.line(pt.x - 14, pt.y, pt.x + 14, pt.y);
+      p.line(pt.x, pt.y - 14, pt.x, pt.y + 14);
+
+      p.stroke(255, 255, 255, 90 + 90 * life);
+      p.strokeWeight(2);
+      p.line(pt.x - 26, pt.y, pt.x + 26, pt.y);
+      p.line(pt.x, pt.y - 26, pt.x, pt.y + 26);
+
+      p.strokeWeight(6);
+    }
+
+    p.pop();
+  }
+
   function applySpawnPositions() {
+    const spawnCount = gameState.gameMode === 1 ? 2 : gameState.bot ? 2 : 1;
+    const randomSpawns = getRandomHallwaySpawns(spawnCount);
+    const appliedSpawns = [];
+
     if (gameState.gameMode === 1) {
-      resetTank(gameState.players[0], WIDTH / 2, HEIGHT / 2);
-      resetTank(gameState.players[1], WIDTH / 2 + 150, HEIGHT / 2);
+      if (randomSpawns) {
+        resetTank(gameState.players[0], randomSpawns[0].x, randomSpawns[0].y);
+        appliedSpawns.push({ x: randomSpawns[0].x, y: randomSpawns[0].y });
+        resetTank(gameState.players[1], randomSpawns[1].x, randomSpawns[1].y);
+        appliedSpawns.push({ x: randomSpawns[1].x, y: randomSpawns[1].y });
+      } else {
+        resetTank(gameState.players[0], WIDTH / 2, HEIGHT / 2);
+        appliedSpawns.push({ x: WIDTH / 2, y: HEIGHT / 2 });
+        resetTank(gameState.players[1], WIDTH / 2 + 150, HEIGHT / 2);
+        appliedSpawns.push({ x: WIDTH / 2 + 150, y: HEIGHT / 2 });
+      }
     } else if (gameState.gameMode === 2) {
-      resetTank(gameState.players[0], WIDTH / 2, HEIGHT / 2);
-      if (gameState.bot)
-        resetTank(gameState.bot, WIDTH / 2 + 150, HEIGHT / 2 + 150);
-    } else if (gameState.gameMode === 3) {
-      resetTank(gameState.players[0], WIDTH / 2, HEIGHT / 2);
-      resetTank(gameState.players[1], WIDTH / 2 + 150, HEIGHT / 2);
-      if (gameState.bot)
-        resetTank(gameState.bot, WIDTH / 2 + 150, HEIGHT / 2 + 150);
+      if (randomSpawns) {
+        resetTank(gameState.players[0], randomSpawns[0].x, randomSpawns[0].y);
+        appliedSpawns.push({ x: randomSpawns[0].x, y: randomSpawns[0].y });
+        if (gameState.bot && randomSpawns[1]) {
+          resetTank(gameState.bot, randomSpawns[1].x, randomSpawns[1].y);
+          appliedSpawns.push({ x: randomSpawns[1].x, y: randomSpawns[1].y });
+        }
+      } else {
+        resetTank(gameState.players[0], WIDTH / 2, HEIGHT / 2);
+        appliedSpawns.push({ x: WIDTH / 2, y: HEIGHT / 2 });
+        if (gameState.bot)
+          resetTank(gameState.bot, WIDTH / 2 + 150, HEIGHT / 2 + 150);
+        if (gameState.bot) {
+          appliedSpawns.push({ x: WIDTH / 2 + 150, y: HEIGHT / 2 + 150 });
+        }
+      }
+    }
+
+    setSpawnIndicators(appliedSpawns);
+  }
+
+  // Soft glow behind maze walls for a neon effect
+  function drawWallGlow() {
+    const groups = [hWalls, vWalls, borderWalls];
+    p.push();
+    p.noStroke();
+    p.rectMode(p.CENTER);
+    // Teal glow using hex with transparency
+    const glowColor = p.color("#a0f6fa");
+    glowColor.setAlpha(120);
+    p.fill(glowColor);
+
+    for (const g of groups) {
+      if (!g) continue;
+      for (const s of g) {
+        if (!s) continue;
+        const w = s.w || s.width || 0;
+        const h = s.h || s.height || 0;
+        if (!w || !h) continue;
+        const pad = 10;
+        p.rect(s.x, s.y, w + pad, h + pad, 6);
+      }
+    }
+
+    p.pop();
+  }
+
+  // Glow around active orbs for extra visibility
+  function drawOrbGlow() {
+    if (!Array.isArray(gameState.orbs) || gameState.orbs.length === 0) return;
+
+    const typeColors = {
+      speed: "#ffb5ff",
+      damage: "#ff6868",
+      health: "#6bff9a",
+      rapid: "#ffe26b",
+      slow: "#c6a0ff",
+      freeze: "#9ae8ff",
+    };
+
+    p.push();
+    p.noStroke();
+    p.ellipseMode(p.CENTER);
+
+    for (const orb of gameState.orbs) {
+      if (!orb || !orb.sprite || !orb.active) continue;
+
+      const baseHex = typeColors[orb.type] || "#ffffff";
+      const glowColor = p.color(baseHex);
+      glowColor.setAlpha(140);
+      p.fill(glowColor);
+
+      const d = orb.sprite.diameter || 30;
+      const radiusBoost = 18;
+      p.circle(orb.sprite.x, orb.sprite.y, d + radiusBoost);
+    }
+
+    p.pop();
+  }
+
+  function freezeAllSprites() {
+    const allTanks = [...gameState.players];
+    if (gameState.bot) allTanks.push(gameState.bot);
+    for (const tank of allTanks) {
+      if (!tank?.sprite) continue;
+      tank.sprite.vel.x = 0;
+      tank.sprite.vel.y = 0;
+      tank.sprite.speed = 0;
+      tank.sprite.collider = "static";
     }
   }
 
   function resetTank(tank, x, y) {
     if (!tank || !tank.sprite) return;
-    tank.health = 100;
-    tank.activeEffects = [];
-    tank.speedMultiplier = 1;
-    tank.damageMultiplier = 1;
-    tank.cooldownMultiplier = 1;
-    tank.updateEffects();
+    tank.health = tank.maxHealth || 100;
+    tank.resetEffects();
 
+    tank.sprite.collider = "dynamic";
     tank.sprite.x = x;
     tank.sprite.y = y;
+    tank.sprite.vel.x = 0;
+    tank.sprite.vel.y = 0;
     tank.sprite.speed = 0;
     tank.sprite.rotation = 0;
   }
@@ -141,13 +842,33 @@ const sketch = (p) => {
     bot.lastHistoryTime = 0;
     bot.nearbyOrbs = [];
     bot.target = null;
+    bot._navPath = null;
+    bot._navDest = null;
+    bot._navLastCompute = 0;
+    bot._fleeTarget = null;
+    bot._fleeTargetTime = 0;
   }
 
   function clearBullets() {
-    for (let i = gameState.bullet.length - 1; i >= 0; i--) {
-      const bullet = gameState.bullet[i];
-      if (bullet && typeof bullet.remove === "function") bullet.remove();
+    if (!gameState.bullet) return;
+
+    if (typeof gameState.bullet.removeAll === "function") {
+      gameState.bullet.removeAll();
+    } else {
+      for (let i = gameState.bullet.length - 1; i >= 0; i--) {
+        const bullet = gameState.bullet[i];
+        if (bullet && typeof bullet.remove === "function") bullet.remove();
+      }
     }
+
+    const freshBulletGroup = new p.Group();
+    initBulletGroup(freshBulletGroup);
+    gameState.bullet = freshBulletGroup;
+
+    for (const player of gameState.players) {
+      if (player) player.bullet = freshBulletGroup;
+    }
+    if (gameState.bot) gameState.bot.bullet = freshBulletGroup;
   }
 
   function clearOrbs() {
@@ -172,12 +893,6 @@ const sketch = (p) => {
       if (playerDead && botDead) return { message: "Draw", winnerKey: null };
       if (playerDead) return { message: "Bot wins", winnerKey: "bot" };
       if (botDead) return { message: "Player wins", winnerKey: "player" };
-    } else if (gameState.gameMode === 3) {
-      const p1Dead = gameState.players[0].health <= 0;
-      const p2Dead = gameState.players[1].health <= 0;
-      const botDead = gameState.bot && gameState.bot.health <= 0;
-      if (botDead) return { message: "Players win", winnerKey: "players" };
-      if (p1Dead && p2Dead) return { message: "Bot wins", winnerKey: "bot" };
     }
     return null;
   }
@@ -188,17 +903,25 @@ const sketch = (p) => {
     if (winnerKey === "player2") gameState.score.player2 += 1;
     if (winnerKey === "player") gameState.score.player += 1;
     if (winnerKey === "bot") gameState.score.bot += 1;
-    if (winnerKey === "players") {
-      gameState.score.player1 += 1;
-      gameState.score.player2 += 1;
-    }
   }
 
   function startRoundReset(outcome) {
     roundOver = true;
-    roundMessage = outcome.message;
     roundResetAt = p.millis() + 1500;
     awardWin(outcome.winnerKey);
+    freezeAllSprites();
+
+    if (roundWinnerBanner) {
+      let bannerMessage = outcome.message;
+
+      if (bannerMessage.toLowerCase().includes("draw")) {
+        bannerMessage = "DRAW THIS ROUND";
+      } else if (bannerMessage.toLowerCase().includes("wins")) {
+        bannerMessage = bannerMessage.toUpperCase() + " THIS ROUND";
+      }
+
+      roundWinnerBanner.show(bannerMessage, 1500);
+    }
   }
 
   function getMatchDurationSeconds() {
@@ -218,31 +941,15 @@ const sketch = (p) => {
     return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
   }
 
-  function getMatchWinnerMessage() {
-    if (gameState.gameMode === 1) {
-      if (gameState.score.player1 === gameState.score.player2) return "Draw";
-      return gameState.score.player1 > gameState.score.player2
-        ? "Player 1 wins"
-        : "Player 2 wins";
-    }
-    if (gameState.gameMode === 2) {
-      if (gameState.score.player === gameState.score.bot) return "Draw";
-      return gameState.score.player > gameState.score.bot
-        ? "Player wins"
-        : "Bot wins";
-    }
-    if (gameState.gameMode === 3) {
-      const playersScore = gameState.score.player1 + gameState.score.player2;
-      if (playersScore === gameState.score.bot) return "Draw";
-      return playersScore > gameState.score.bot ? "Players win" : "Bot wins";
-    }
-    return "Draw";
-  }
-
   function resetRound() {
     roundOver = false;
-    roundMessage = "";
     roundResetAt = 0;
+    gameOverShown = false;
+
+    // Ensure gameplay is unpaused for the new round, but
+    // keep accumulated paused time so the match timer is honest.
+    gamePaused = false;
+    pauseStartedAt = 0;
 
     const previousIndex = currentMapIndex;
     if (mazeLayout.length > 1) {
@@ -260,13 +967,26 @@ const sketch = (p) => {
 
     if (gameState.bot) resetBotState(gameState.bot);
 
+    if (gameState.bot && gameState.bot.setMazeData) {
+      gameState.bot.setMazeData(selectedMap, TILEW, TILEH, OFFSETY);
+    }
+
     gameState.orbs = renderOrbSpawn(p, selectedMap, orbTypes);
+
+    // Countdown is only for the first round of a match.
+    if (isFirstRoundOfMatch) {
+      startRoundCountdown();
+      isFirstRoundOfMatch = false;
+    }
   }
+
+  // --------- SETUP / DRAW ---------
 
   p.setup = () => {
     new p.Canvas(WIDTH, HEIGHT);
 
     gameState.bullet = new p.Group();
+    initBulletGroup(gameState.bullet);
     const config = getConfig();
     const modeString = config?.mode || "bot";
 
@@ -275,6 +995,22 @@ const sketch = (p) => {
     else if (modeString === "pvp") mode = 1;
 
     gameState.gameMode = mode;
+
+    const p1Name = config?.player1;
+    let p1Index = tankCharacters.findIndex((t) => t.name === p1Name);
+    if (p1Index < 0) p1Index = 0;
+
+    let p2IndexFromConfig = -1;
+    if (mode === 1) {
+      const p2Name = config?.player2;
+      p2IndexFromConfig = tankCharacters.findIndex((t) => t.name === p2Name);
+      if (p2IndexFromConfig < 0) p2IndexFromConfig = 1;
+    }
+
+    createTankPreview("p1TankPreview", p1Index);
+    if (mode === 1) {
+      createTankPreview("p2TankPreview", p2IndexFromConfig);
+    }
 
     const wallsData = wallsColliderSetup(p, hWalls, vWalls, borderWalls);
     hWalls = wallsData.hWalls;
@@ -300,6 +1036,13 @@ const sketch = (p) => {
     } else if (mode === 2) {
       gameState.players = [players.player];
       gameState.bot = players.bot;
+
+      if (gameState.bot && gameState.bot.character) {
+        const botCharName = gameState.bot.character.name;
+        let botIndex = tankCharacters.findIndex((t) => t.name === botCharName);
+        if (botIndex < 0) botIndex = 0;
+        createTankPreview("p2TankPreview", botIndex);
+      }
     }
 
     applySpawnPositions();
@@ -307,32 +1050,90 @@ const sketch = (p) => {
     if (gameState.bot && gameState.bot.setWallGroups) {
       gameState.bot.setWallGroups([hWalls, vWalls, borderWalls]);
     }
+    if (gameState.bot && gameState.bot.setMazeData) {
+      const _activeMap = mazeLayout[currentMapIndex] || mazeLayout[0];
+      gameState.bot.setMazeData(_activeMap, TILEW, TILEH, OFFSETY);
+    }
 
     gameState.matchDurationSeconds = getMatchDurationSeconds();
     gameState.matchStartMs = p.millis();
     gameState.matchOver = false;
+
+    // Initialize Game Over and Round Winner UI
+    gameOverUI = initGameOverUI();
+    roundWinnerBanner = initRoundWinnerBanner();
+
+    // Start countdown for the very first round of this match
+    isFirstRoundOfMatch = false;
+    startRoundCountdown();
   };
 
   p.draw = () => {
-    p.background(220);
+    // Retro sci-fi background with a light neon grid
+    p.background(80, 120, 190);
 
-    // Match timer logic
+    p.push();
+    const gridSize = 48;
+    p.stroke(80, 220, 255, 110);
+    p.strokeWeight(1.5);
+    for (let x = 0; x <= p.width; x += gridSize) {
+      p.line(x, 0, x, p.height);
+    }
+    for (let y = 0; y <= p.height; y += gridSize) {
+      p.line(0, y, p.width, y);
+    }
+    p.pop();
+
+    // Neon glow around maze walls
+    drawWallGlow();
+
+    // If paused: freeze everything, including indicators
+    if (gamePaused) {
+      if (p.kb.presses("escape")) {
+        togglePause(false);
+      }
+      return;
+    }
+
+    // If in countdown: draw spawn indicators but skip gameplay/timer
+    if (roundStarting) {
+      drawSpawnIndicators();
+      return;
+    }
+
+    // Poll: start music once async load finishes.
+    // Only while match is active and not in round reset.
+    if (!gameState.matchOver && !roundOver && musicTracks.length > 0) {
+      if (!currentMusic) {
+        const trackIndex = resolveTrackIndex(currentMapIndex);
+        if (trackIndex >= 0) {
+          const state = bgmState[trackIndex];
+          if (state && state.sound && !state.sound.isPlaying()) {
+            const factor = getMusicVolumeFactor();
+            state.sound.setVolume(BGM_VOLUME * factor);
+            state.sound.loop();
+            currentMusic = state.sound;
+          }
+        }
+      }
+    }
+
+    // Match timer logic (ignore paused time)
     if (!gameState.matchOver && gameState.matchDurationSeconds > 0) {
       const elapsedSeconds = Math.floor(
-        (p.millis() - gameState.matchStartMs) / 1000,
+        (p.millis() - gameState.matchStartMs - totalPausedMs) / 1000,
       );
       if (elapsedSeconds >= gameState.matchDurationSeconds) {
         gameState.matchOver = true;
         roundOver = true;
-        roundMessage = `Time up: ${getMatchWinnerMessage()}`;
       }
     }
 
-    // Update HTML HUD (timer + bars)
+    // Update HTML HUD
     let remainingSeconds = 0;
     if (gameState.matchDurationSeconds > 0) {
       const elapsedSeconds = Math.floor(
-        (p.millis() - gameState.matchStartMs) / 1000,
+        (p.millis() - gameState.matchStartMs - totalPausedMs) / 1000,
       );
       remainingSeconds = Math.max(
         0,
@@ -345,25 +1146,106 @@ const sketch = (p) => {
       players: gameState.players,
       bot: gameState.bot,
       remainingSeconds,
+      score: gameState.score,
     });
 
     if (gameState.matchOver) {
+      if (gameOverUI && !gameOverShown) {
+        gameOverShown = true;
+
+        // Play announcement + game over BGM once when the modal opens
+        playGameOverAudio();
+
+        // @ts-ignore
+        gameOverUI.show(gameState, {
+          rematch: () => {
+            // Stop game-over BGM when restarting
+            stopGameOverMusic();
+
+            gameState.score = { player1: 0, player2: 0, player: 0, bot: 0 };
+            gameState.matchStartMs = p.millis();
+            gameState.matchOver = false;
+            roundOver = false;
+            gameOverShown = false;
+
+            // Reset pause state
+            gamePaused = false;
+            pauseStartedAt = 0;
+            totalPausedMs = 0;
+
+            // @ts-ignore
+            gameOverUI.hide();
+
+            // New match: first round should use countdown.
+            isFirstRoundOfMatch = true;
+            resetRound();
+          },
+          menu: () => {
+            // Stop all music and go back to main menu
+            stopGameOverMusic();
+            sessionStorage.removeItem("gameConfig");
+            stopCurrentMusic();
+            window.location.href = "index.html";
+          },
+        });
+      }
+
+      if (p.kb.presses("r")) {
+        stopGameOverMusic();
+
+        gameState.score = { player1: 0, player2: 0, player: 0, bot: 0 };
+        gameState.matchStartMs = p.millis();
+        gameState.matchOver = false;
+        roundOver = false;
+        gameOverShown = false;
+
+        // Reset pause state
+        gamePaused = false;
+        pauseStartedAt = 0;
+        totalPausedMs = 0;
+
+        // @ts-ignore
+        if (gameOverUI) gameOverUI.hide();
+
+        // New match via keyboard rematch: use countdown on first round.
+        isFirstRoundOfMatch = true;
+        resetRound();
+      }
+      if (p.kb.presses("escape")) {
+        stopGameOverMusic();
+        sessionStorage.removeItem("gameConfig");
+        stopCurrentMusic();
+        window.location.href = "index.html";
+      }
       return;
     }
 
     if (roundOver) {
-      p.push();
-      p.fill(0);
-      p.textSize(28);
-      p.textAlign(p.CENTER, p.CENTER);
-      p.text(roundMessage, WIDTH / 2, HEALTHBARHEIGHT / 2);
-      p.pop();
+      // While the round winner banner is showing, keep advancing
+      // tank animations (e.g. destroyed explosions) but skip
+      // input/movement and other gameplay.
+      for (const player of gameState.players) {
+        if (player && typeof player.tickAnimationOnly === "function") {
+          player.tickAnimationOnly();
+        }
+      }
+      if (
+        gameState.bot &&
+        typeof gameState.bot.tickAnimationOnly === "function"
+      ) {
+        gameState.bot.tickAnimationOnly();
+      }
 
       if (p.millis() >= roundResetAt) {
         resetRound();
       }
       return;
     }
+
+    drawSpawnIndicators();
+
+    // Orb glow (behind sprites but over walls/grid)
+    drawOrbGlow();
 
     // Update all players
     for (let player of gameState.players) {
@@ -386,7 +1268,10 @@ const sketch = (p) => {
             _closest = _pl;
           }
         }
-        if (gameState.bot.target !== _closest) gameState.bot.setTarget(_closest);
+        if (gameState.bot.target !== _closest)
+          gameState.bot.setTarget(_closest);
+      } else if (gameState.bot.target) {
+        gameState.bot.setTarget(null);
       }
       gameState.bot.update(gameState.orbs);
     }
@@ -413,15 +1298,7 @@ const sketch = (p) => {
         }
       }
 
-      if (pickedUp) {
-        orb.remove();
-        gameState.orbs.splice(i, 1);
-
-        const randomDelay = p.random(1000, 5000);
-        gameState.pendingOrbSpawns.push({
-          spawnTime: p.millis() + randomDelay,
-        });
-      } else if (orb.checkDespawn()) {
+      if (pickedUp || orb.checkDespawn()) {
         orb.remove();
         gameState.orbs.splice(i, 1);
 
@@ -477,18 +1354,16 @@ const sketch = (p) => {
     }
     p.noStroke();
 
-    // Handle bullet collisions (SELF-DAMAGE ENABLED)
+    // Handle bullet collisions
     for (let i = gameState.bullet.length - 1; i >= 0; i--) {
       const bullet = gameState.bullet[i];
       let hitTarget = false;
 
-      // Grace time so bullets don't instantly hit the shooter on spawn
       if (bullet._spawnMs == null) bullet._spawnMs = p.millis();
       const bulletAgeMs = p.millis() - bullet._spawnMs;
       const selfGraceMs = 120;
 
       for (let player of gameState.players) {
-        // allow self-hit after grace
         if (bullet._shooter === player && bulletAgeMs < selfGraceMs) continue;
 
         if (bullet.overlaps(player.sprite)) {
@@ -500,9 +1375,8 @@ const sketch = (p) => {
       }
 
       if (!hitTarget && gameState.bot) {
-        // allow self-hit after grace
         if (bullet._shooter === gameState.bot && bulletAgeMs < selfGraceMs) {
-          // skip
+          //
         } else if (bullet.overlaps(gameState.bot.sprite)) {
           const calcDamage = calculateDamage(bullet, p);
           gameState.bot.playerHit(bullet, calcDamage);
@@ -514,49 +1388,68 @@ const sketch = (p) => {
     }
 
     // Handle laser path burning damage
+    const _laserBurnDamage = 2;
+    const _laserBurnInterval = 100;
+    const _laserBurnRadius = 14;
+    const _selfGraceMs = 120;
+
     for (let i = 0; i < gameState.bullet.length; i++) {
       const bullet = gameState.bullet[i];
-      if (bullet._isLaser && bullet._pathPoints && bullet._pathPoints.length > 0) {
-        // Grace time so the shooter doesn't instantly burn themselves on spawn
-        if (bullet._spawnMs == null) bullet._spawnMs = p.millis();
-        const bulletAgeMs = p.millis() - bullet._spawnMs;
-        const selfGraceMs = 120;
+      if (
+        !bullet._isLaser ||
+        !bullet._pathPoints ||
+        bullet._pathPoints.length === 0
+      )
+        continue;
 
-        for (let pathPoint of bullet._pathPoints) {
-          for (let player of gameState.players) {
-            if (bullet._shooter === player && bulletAgeMs < selfGraceMs) continue;
-            const dist = p.dist(
-              pathPoint.x,
-              pathPoint.y,
-              player.sprite.x,
-              player.sprite.y,
-            );
-            if (dist < player.sprite.diameter / 2 + 10) {
-              player.health -= 0.05;
-            }
-          }
+      if (bullet._spawnMs == null) bullet._spawnMs = p.millis();
+      const bulletAgeMs = p.millis() - bullet._spawnMs;
 
-          if (gameState.bot && bullet._shooter !== gameState.bot) {
-            const dist = p.dist(
-              pathPoint.x,
-              pathPoint.y,
-              gameState.bot.sprite.x,
-              gameState.bot.sprite.y,
-            );
-            if (dist < gameState.bot.sprite.diameter / 2 + 10) {
-              gameState.bot.health -= 0.05;
-            }
+      if (bullet._lastBurnTick == null) bullet._lastBurnTick = 0;
+      if (p.millis() - bullet._lastBurnTick < _laserBurnInterval) continue;
+      bullet._lastBurnTick = p.millis();
+
+      for (const player of gameState.players) {
+        if (bullet._shooter === player && bulletAgeMs < _selfGraceMs) continue;
+        let touching = false;
+        for (const pt of bullet._pathPoints) {
+          const d = p.dist(pt.x, pt.y, player.sprite.x, player.sprite.y);
+          if (d < player.sprite.diameter / 2 + _laserBurnRadius) {
+            touching = true;
+            break;
           }
+        }
+        if (touching) {
+          player.playerHit(null, _laserBurnDamage);
+        }
+      }
+
+      if (gameState.bot && bullet._shooter !== gameState.bot) {
+        let touching = false;
+        for (const pt of bullet._pathPoints) {
+          const d = p.dist(
+            pt.x,
+            pt.y,
+            gameState.bot.sprite.x,
+            gameState.bot.sprite.y,
+          );
+          if (d < gameState.bot.sprite.diameter / 2 + _laserBurnRadius) {
+            touching = true;
+            break;
+          }
+        }
+        if (touching) {
+          gameState.bot.playerHit(null, _laserBurnDamage);
         }
       }
     }
 
     // Handle shooting controls
-    if (p.kb.presses("q")) {
+    if (p.kb.presses("space")) {
       gameState.players[0].shoot();
     }
 
-    if (gameState.gameMode === 1 && p.kb.presses("m")) {
+    if (gameState.gameMode === 1 && p.kb.presses("enter")) {
       gameState.players[1].shoot();
     }
 
@@ -565,11 +1458,12 @@ const sketch = (p) => {
       startRoundReset(roundOutcome);
     }
 
-    if (p.kb.presses("escape")) {
-      sessionStorage.removeItem("gameConfig");
-      window.location.href = "index.html";
+    // In active gameplay, ESC toggles pause instead of going straight to menu.
+    if (!gameState.matchOver && p.kb.presses("escape")) {
+      togglePause();
     }
   };
 };
 
+// @ts-ignore
 new p5(sketch);

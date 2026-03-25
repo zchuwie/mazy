@@ -1,3 +1,5 @@
+//mechanics.js
+
 import { validHallwayPosition, spawnRandomOrb } from "./helper.js";
 import { Orb } from "./components/orb.js";
 import { HEIGHT, TILEW, TILEH, OFFSETY } from "./interface.js";

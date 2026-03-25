@@ -1,3 +1,8 @@
+// src/components/tank.js
+
+const DEBUG = false;
+const log = (...args) => DEBUG && console.log(...args);
+
 export class Tank {
   constructor(p, x, y, image, controls, bullet, character) {
     this.p = p;
@@ -16,6 +21,27 @@ export class Tank {
       }
     }
 
+    // Cache default image transform so we can reapply it
+    // when swapping animation frames.
+    this._baseImage = this.sprite.image || null;
+    this._imageScale = this.sprite.image?.scale ?? 0.1;
+    this._imageOffsetY = this.sprite.image?.offset?.y ?? -10;
+
+    // Optional per-character animation sheets (only defined for
+    // tanks that provide them, e.g. Tank Alpha).
+    this.shootSheet = character?.shootSheet || null;
+    this.destroySheet = character?.destroySheet || null;
+    this.shootFrameCount = character?.shootFrames || 0;
+    this.destroyFrameCount = character?.destroyFrames || 0;
+
+    this._shootFrames = null;
+    this._destroyFrames = null;
+
+    this._animState = "idle"; // "idle" | "shoot" | "dead"
+    this._animFrameIndex = 0;
+    this._animLastFrameTime = 0;
+    this._animFrameDuration = 60; // ms per frame (overridden per anim)
+
     this.sprite.rotation = 0;
     this.sprite.rotationLock = true;
     this.sprite.friction = 0;
@@ -23,7 +49,8 @@ export class Tank {
     this.sprite.bounciness = 0;
     this.sprite.mass = 100;
 
-    this.health = 100;
+    this.maxHealth = character?.maxHealth || 100;
+    this.health = this.maxHealth;
     this.shootCooldown = character?.shootCooldown || 500;
     this.controls = controls;
     this.baseSpeed = character?.baseSpeed || 5;
@@ -65,21 +92,170 @@ export class Tank {
     // Burning effect state
     this.burningEndTime = null;
     this.lastBurnDamageTime = null;
-    this.burningDamagePerTick = 0.3; // Minimal damage per tick
+    this.burningDamagePerTick = 0.3;
+
+    this.orbEffectEndTimes = {};
+  }
+
+  resetEffects() {
+    this.activeEffects = [];
+    this.speedMultiplier = 1;
+    this.damageMultiplier = 1;
+    this.cooldownMultiplier = 1;
+    this.moveSpeed = this.baseSpeed * 0.75;
+
+    this.burningEndTime = null;
+    this.lastBurnDamageTime = null;
+
+    this.orbEffectEndTimes = {};
+
+    this.lastShotTime = 0;
+
+    // Reset animation state (used when starting a new round).
+    this._animState = "idle";
+    this._animFrameIndex = 0;
+    this._animLastFrameTime = 0;
+
+    if (this._baseImage) {
+      this.sprite.image = this._baseImage;
+      this._applyImageTransform();
+    }
+  }
+
+  _applyImageTransform() {
+    if (!this.sprite.image) return;
+    this.sprite.image.scale = this._imageScale;
+    if (!this.sprite.image.offset) this.sprite.image.offset = { x: 0, y: 0 };
+    this.sprite.image.offset.y = this._imageOffsetY;
+  }
+
+  _ensureShootFrames() {
+    if (this._shootFrames || !this.shootSheet || this.shootFrameCount <= 0) {
+      return;
+    }
+
+    const frameW = this.shootSheet.width / this.shootFrameCount;
+    const frameH = this.shootSheet.height;
+    this._shootFrames = [];
+    for (let i = 0; i < this.shootFrameCount; i++) {
+      const frame = this.shootSheet.get(frameW * i, 0, frameW, frameH);
+      this._shootFrames.push(frame);
+    }
+  }
+
+  _ensureDestroyFrames() {
+    if (
+      this._destroyFrames ||
+      !this.destroySheet ||
+      this.destroyFrameCount <= 0
+    ) {
+      return;
+    }
+
+    const frameW = this.destroySheet.width / this.destroyFrameCount;
+    const frameH = this.destroySheet.height;
+    this._destroyFrames = [];
+    for (let i = 0; i < this.destroyFrameCount; i++) {
+      const frame = this.destroySheet.get(frameW * i, 0, frameW, frameH);
+      this._destroyFrames.push(frame);
+    }
+  }
+
+  _startShootAnimation() {
+    if (!this.shootSheet || this.health <= 0) return;
+    this._ensureShootFrames();
+    if (!this._shootFrames || this._shootFrames.length === 0) return;
+
+    this._animState = "shoot";
+    this._animFrameIndex = 0;
+    this._animFrameDuration = 60;
+    this._animLastFrameTime = this.p.millis();
+    this.sprite.image = this._shootFrames[0];
+    this._applyImageTransform();
+  }
+
+  _startDestroyedAnimation() {
+    if (!this.destroySheet) return;
+    this._ensureDestroyFrames();
+    if (!this._destroyFrames || this._destroyFrames.length === 0) return;
+
+    this._animState = "dead";
+    this._animFrameIndex = 0;
+    this._animFrameDuration = 90;
+    this._animLastFrameTime = this.p.millis();
+    this.sprite.image = this._destroyFrames[0];
+    this._applyImageTransform();
+  }
+
+  _updateAnimation() {
+    const now = this.p.millis();
+
+    if (this._animState === "shoot") {
+      if (!this._shootFrames || this._shootFrames.length === 0) {
+        this._animState = "idle";
+        this.sprite.image = this._baseImage;
+        this._applyImageTransform();
+        return;
+      }
+
+      if (now - this._animLastFrameTime >= this._animFrameDuration) {
+        this._animLastFrameTime = now;
+        this._animFrameIndex += 1;
+        if (this._animFrameIndex >= this._shootFrames.length) {
+          this._animState = "idle";
+          this.sprite.image = this._baseImage;
+          this._applyImageTransform();
+          return;
+        }
+      }
+
+      this.sprite.image = this._shootFrames[this._animFrameIndex];
+      this._applyImageTransform();
+    } else if (this._animState === "dead") {
+      if (!this._destroyFrames || this._destroyFrames.length === 0) return;
+
+      if (now - this._animLastFrameTime >= this._animFrameDuration) {
+        this._animLastFrameTime = now;
+        if (this._animFrameIndex < this._destroyFrames.length - 1) {
+          this._animFrameIndex += 1;
+        }
+      }
+
+      this.sprite.image = this._destroyFrames[this._animFrameIndex];
+      this._applyImageTransform();
+    }
+  }
+
+  // Public helper so game loop can advance animations (e.g. destroyed
+  // explosions) even during round-over states without processing input
+  // or movement.
+  tickAnimationOnly() {
+    this._updateAnimation();
   }
 
   update() {
     this.updateEffects();
 
-    const isFrozen = this.activeEffects.some(effect => effect.type === "speed" && effect.value === 0);
+    // Run sprite animation (shooting / destroyed) every frame.
+    this._updateAnimation();
 
-    if (!isFrozen) {
-      if (this.p.kb.pressing(this.controls.left)) {
-        this.sprite.rotation -= this.rotationSpeed;
-      }
-      if (this.p.kb.pressing(this.controls.right)) {
-        this.sprite.rotation += this.rotationSpeed;
-      }
+    const isDead = this.health <= 0;
+    const isFrozen = this.activeEffects.some(
+      (effect) => effect.type === "speed" && effect.value === 0,
+    );
+
+    if (isDead || isFrozen) {
+      this.sprite.speed = 0;
+      this.sprite.vel.x = 0;
+      this.sprite.vel.y = 0;
+      return;
+    }
+
+    if (this.p.kb.pressing(this.controls.left)) {
+      this.sprite.rotation -= this.rotationSpeed;
+    }
+    if (this.p.kb.pressing(this.controls.right)) {
+      this.sprite.rotation += this.rotationSpeed;
     }
 
     const movingForward = this.p.kb.pressing(this.controls.forward);
@@ -94,19 +270,16 @@ export class Tank {
       this._intendedVy = Math.sin(angleRad) * this.moveSpeed * dir;
 
       if (this._blocked) {
-        // Check if still pushing in the same blocked direction
         const dot =
           this._intendedVx * this._lastBlockedNx +
           this._intendedVy * this._lastBlockedNy;
 
         if (dot > 0.1) {
-          // Still pushing into the wall — kill movement
           this.sprite.vel.x = 0;
           this.sprite.vel.y = 0;
           this.sprite.speed = 0;
           return;
         } else {
-          // Rotated away from wall — unblock
           this._blocked = false;
         }
       }
@@ -126,9 +299,11 @@ export class Tank {
 
   updateEffects() {
     const currentTime = this.p.millis();
+    const prevHealth = this.health;
+
     this.activeEffects = this.activeEffects.filter((effect) => {
       if (currentTime >= effect.endTime) {
-        console.log(`Effect ${effect.type} expired`);
+        log(`Effect ${effect.type} expired`);
         return false;
       }
       return true;
@@ -136,10 +311,26 @@ export class Tank {
 
     // Apply burning damage
     if (this.burningEndTime && currentTime < this.burningEndTime) {
-      if (!this.lastBurnDamageTime || currentTime - this.lastBurnDamageTime >= 100) {
+      if (
+        !this.lastBurnDamageTime ||
+        currentTime - this.lastBurnDamageTime >= 100
+      ) {
+        const before = this.health;
         this.health -= this.burningDamagePerTick;
+        if (this.health < 0) this.health = 0;
         this.lastBurnDamageTime = currentTime;
-        console.log(`Burning damage: ${this.burningDamagePerTick} HP`);
+        log(`Burning damage: ${this.burningDamagePerTick} HP`);
+
+        // If burning alone killed the tank (not a bullet), start
+        // the destroyed animation and SFX just like a direct hit.
+        if (before > 0 && this.health <= 0) {
+          this._startDestroyedAnimation();
+          // @ts-ignore
+          if (window.__mazyPlayDestroyedSfx) {
+            // @ts-ignore
+            window.__mazyPlayDestroyedSfx();
+          }
+        }
       }
     } else if (this.burningEndTime && currentTime >= this.burningEndTime) {
       this.burningEndTime = null;
@@ -160,7 +351,7 @@ export class Tank {
   }
 
   applySpeedBoost(multiplier, duration) {
-    console.log(`Applying speed boost: ${multiplier}x for ${duration}ms`);
+    log(`Applying speed boost: ${multiplier}x for ${duration}ms`);
     this.activeEffects.push({
       type: "speed",
       value: multiplier,
@@ -169,7 +360,7 @@ export class Tank {
   }
 
   applyDamageBoost(multiplier, duration) {
-    console.log(`Applying damage boost: ${multiplier}x for ${duration}ms`);
+    log(`Applying damage boost: ${multiplier}x for ${duration}ms`);
     this.activeEffects.push({
       type: "damage",
       value: multiplier,
@@ -178,7 +369,7 @@ export class Tank {
   }
 
   applyRapidFire(multiplier, duration) {
-    console.log(`Applying rapid fire: ${multiplier}x for ${duration}ms`);
+    log(`Applying rapid fire: ${multiplier}x for ${duration}ms`);
     this.activeEffects.push({
       type: "cooldown",
       value: multiplier,
@@ -187,7 +378,7 @@ export class Tank {
   }
 
   applyFreeze(duration) {
-    console.log(`Applying freeze for ${duration}ms`);
+    log(`Applying freeze for ${duration}ms`);
     this.activeEffects.push({
       type: "speed",
       value: 0,
@@ -196,15 +387,20 @@ export class Tank {
   }
 
   applyBurning(duration) {
-    console.log(`Applying burning effect for ${duration}ms`);
-    this.burningEndTime = this.p.millis() + duration;
-    this.lastBurnDamageTime = this.p.millis();
+    log(`Applying burning effect for ${duration}ms`);
+    const proposedEnd = this.p.millis() + duration;
+    if (this.burningEndTime && this.burningEndTime > this.p.millis()) {
+      this.burningEndTime = Math.max(this.burningEndTime, proposedEnd);
+    } else {
+      this.burningEndTime = proposedEnd;
+      this.lastBurnDamageTime = this.p.millis();
+    }
   }
 
   heal(amount) {
-    console.log(`Healing for ${amount} HP`);
+    log(`Healing for ${amount} HP`);
     this.health += amount;
-    if (this.health > 100) this.health = 100;
+    if (this.health > this.maxHealth) this.health = this.maxHealth;
   }
 
   createBullet() {
@@ -213,19 +409,17 @@ export class Tank {
     const bulletX = this.sprite.x + offset * Math.cos(angleRad);
     const bulletY = this.sprite.y + offset * Math.sin(angleRad);
 
-    console.log(`Creating bullet - Type: ${this.bulletType}`);
+    log(`Creating bullet - Type: ${this.bulletType}`);
 
     if (this.bulletType === "dual") {
-      console.log(`Firing DUAL bullets`);
+      log(`Firing DUAL bullets`);
       const sideOffset = 10;
       const perpAngleRad = this.p.radians(this.sprite.rotation);
-      
-      // Left bullet
+
       const leftX = bulletX + sideOffset * Math.cos(perpAngleRad);
       const leftY = bulletY + sideOffset * Math.sin(perpAngleRad);
       this.createSingleBullet(leftX, leftY, this.sprite.rotation - 90);
-      
-      // Right bullet
+
       const rightX = bulletX - sideOffset * Math.cos(perpAngleRad);
       const rightY = bulletY - sideOffset * Math.sin(perpAngleRad);
       this.createSingleBullet(rightX, rightY, this.sprite.rotation - 90);
@@ -239,14 +433,14 @@ export class Tank {
     bullet.direction = direction;
     bullet.speed = this.bulletSpeed;
     bullet.diameter = this.bulletDiameter;
-    bullet.life = this.bulletLife; 
+    bullet.life = this.bulletLife; // calculateDamage reads bullet.life
     bullet._createdAt = this.p.millis();
     bullet._startX = x;
     bullet._startY = y;
     bullet._damage = this.baseDamage * this.damageMultiplier;
     bullet._shooter = this;
 
-    console.log(
+    log(
       `${this.bulletType} bullet | dmg: ${bullet._damage} | spd: ${bullet.speed} | life: ${bullet.life}`,
     );
     return bullet;
@@ -257,12 +451,27 @@ export class Tank {
     const effectiveCooldown = this.shootCooldown * this.cooldownMultiplier;
 
     if (currentTime - this.lastShotTime >= effectiveCooldown) {
-      if (this.bulletType === "laser") {
+      const isLaser = this.bulletType === "laser";
+
+      if (isLaser) {
         this.fireLaserBeam();
       } else {
         this.createBullet();
+        // Optional muzzle-flash shooting animation (e.g. Tank Alpha)
+        this._startShootAnimation();
       }
       this.lastShotTime = currentTime;
+
+      // Fire SFX: different sound for laser vs normal tanks.
+      // @ts-ignore
+      if (isLaser && window.__mazyPlayFireSfxLaser) {
+        // @ts-ignore
+        window.__mazyPlayFireSfxLaser();
+      // @ts-ignore
+      } else if (!isLaser && window.__mazyPlayFireSfxNormal) {
+        // @ts-ignore
+        window.__mazyPlayFireSfxNormal();
+      }
     }
   }
 
@@ -277,7 +486,7 @@ export class Tank {
     laserBullet.direction = direction;
     laserBullet.speed = this.bulletSpeed;
     laserBullet.diameter = 8;
-    laserBullet.life = this.bulletLife; 
+    laserBullet.life = this.bulletLife;
     laserBullet.color = "#FFD700";
     laserBullet.bounciness = 1;
     laserBullet.friction = 0;
@@ -292,19 +501,48 @@ export class Tank {
     laserBullet._pathPoints = [];
     laserBullet._maxPathLength = 50;
 
-    console.log(
+    log(
       `Laser fired | dmg: ${laserBullet._damage} | spd: ${laserBullet.speed} | life: ${laserBullet.life}`,
     );
   }
 
   playerHit(bullet, damage) {
     if (bullet && bullet.remove) bullet.remove();
-    const finalDamage = damage || bullet._damage || 20;
-    console.log(
-      `Player hit for ${finalDamage} damage. Health: ${this.health} -> ${this.health - finalDamage}`,
+
+    const rawDamage = damage ?? bullet?._damage ?? 20;
+    const armor = this.character?.armor ?? 0;
+    const finalDamage = Math.round(
+      rawDamage * (1 - Math.max(0, Math.min(1, armor))),
     );
+
+    const prevHealth = this.health;
+
+    log(
+      `Player hit | raw: ${rawDamage} | armor: ${armor} | final: ${finalDamage} | ` +
+        `HP: ${this.health} → ${Math.max(0, this.health - finalDamage)}`,
+    );
+
     this.health -= finalDamage;
     if (this.health < 0) this.health = 0;
+
+    // Impact / damage SFX
+    // @ts-ignore
+    if (window.__mazyPlayHitSfx) {
+      // @ts-ignore
+      window.__mazyPlayHitSfx();
+    }
+
+    // Death SFX (only when crossing from alive to dead)
+    if (this.health <= 0 && prevHealth > 0) {
+      // Trigger destroyed animation if this tank has one.
+      this._startDestroyedAnimation();
+
+      // @ts-ignore
+      if (window.__mazyPlayDestroyedSfx) {
+        // @ts-ignore
+        window.__mazyPlayDestroyedSfx();
+      }
+    }
   }
 
   isPlayerDead() {

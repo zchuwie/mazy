@@ -1,3 +1,5 @@
+//config.js
+
 import { Tank } from "./components/tank.js";
 import { BotTank } from "./components/bot.js";
 import {

@@ -2,10 +2,14 @@ export const tankCharacters = [
     {
         name: 'Tank Alpha',
         image: '../assets/characters/alpha/Tank-Alpha.png',
+        shootSheet: '../assets/characters/alpha/remove.png',
+        shootFrames: 8,
+        destroySheet: '../assets/characters/alpha/inangyarn.png',
+        destroyFrames: 8,
         baseSpeed: 5,
-        shootCooldown: 450,
-        baseDamage: 20,
-        bulletSpeed: 16,
+        shootCooldown: 400,
+        baseDamage: 18,
+        bulletSpeed: 15,
         bulletDiameter: 8,
         bulletLife: 120,
         bulletType: 'normal',
@@ -15,43 +19,51 @@ export const tankCharacters = [
     {
         name: 'Tank Bravo',
         image: '../assets/characters/bravo/Tank-Bravo.png',
-        baseSpeed: 5,
-        shootCooldown: 550,
-        baseDamage: 12,
-        bulletSpeed: 12,
+        destroySheet: '../assets/characters/bravo/bravo-destroyed-sprite.png',
+        destroyFrames: 8,
+        baseSpeed: 4,
+        shootCooldown: 500,
+        baseDamage: 9,
+        bulletSpeed: 11,
         bulletDiameter: 6,
-        bulletLife: 100,
+        bulletLife: 90,
         bulletType: 'dual',
-        maxHealth: 140,
-        armor: 0.25
+        maxHealth: 130,
+        armor: 0.18
     },
     {
         name: 'Tank Cobra',
         image: '../assets/characters/cobra/Tank-Cobra.png',
-        baseSpeed: 5,
-        shootCooldown: 300,
-        baseDamage: 20,
-        bulletSpeed: 12,
-        bulletDiameter: 20,
-        bulletLife: 200,
+        destroySheet: '../assets/characters/cobra/cobra-destroyed-sprite.png',
+        destroyFrames: 8,
+        baseSpeed: 6.5,
+        shootCooldown: 320,
+        baseDamage: 15,
+        bulletSpeed: 11,
+        bulletDiameter: 16,
+        bulletLife: 160,
         bulletType: 'normal',
-        maxHealth: 70,
+        maxHealth: 72,
         armor: 0
     },
     {
         name: 'Tank Delta',
         image: '../assets/characters/delta/Tank-Delta.png',
-        baseSpeed: 5,
-        shootCooldown: 1000,
-        baseDamage: 18,
-        bulletSpeed: 14,
-        bulletDiameter: 7,
-        bulletLife: 90,
+        destroySheet: '../assets/characters/delta/delta-destroyed-sprite.png',
+        destroyFrames: 8,
+        baseSpeed: 4.5,
+        shootCooldown: 880,
+        baseDamage: 32,
+        bulletSpeed: 16,
+        bulletDiameter: 8,
+        bulletLife: 110,
         bulletType: 'laser',
-        maxHealth: 90,
-        armor: 0.15
+        maxHealth: 92,
+        armor: 0.12
     }
 ];
+
+
 
 export const orbTypes = [
     { name: 'speed', image: '../assets/orbs/speed.png' },
@@ -61,6 +73,37 @@ export const orbTypes = [
     { name: 'slow', image: '../assets/orbs/slow.png' },
     { name: 'freeze', image: '../assets/orbs/freeze.png' }
 ]
+
+export const musicTracks = [
+    { name: 'Map 1', file: '../assets/audio/bgm/map/map-1-bgm.mp3' },
+    { name: 'Map 2', file: '../assets/audio/bgm/map/map-2-bgm.mp3' },
+    { name: 'Map 3', file: '../assets/audio/bgm/map/map-3-bgm.mp3' },
+    { name: 'Map 4', file: '../assets/audio/bgm/map/map-4-bgm.mp3' },
+    { name: 'Map 5', file: '../assets/audio/bgm/map/map-5-bgm.mp3' },
+    { name: 'Map 6', file: '../assets/audio/bgm/map/map-6-bgm.mp3' },
+    { name: 'Map 7', file: '../assets/audio/bgm/map/map-7-bgm.mp3' },
+    { name: 'Map 8', file: '../assets/audio/bgm/map/map-8-bgm.mp3' },
+]
+
+export const orbSfx = {
+  speed:  '../assets/audio/sfx/speed.wav',
+  damage: '../assets/audio/sfx/damage.wav',
+  health: '../assets/audio/sfx/health.wav',
+  rapid:  '../assets/audio/sfx/rapid.wav',
+  slow:   '../assets/audio/sfx/slow.wav',
+  freeze: '../assets/audio/sfx/freeze.wav',
+};
+
+export const orbHudInactive = {
+  speed:  '../assets/orbs/inactive/speed-inactive.png',
+  damage: '../assets/orbs/inactive/damage-inactive.png',
+  health: '../assets/orbs/inactive/health-inactive.png',
+  rapid:  '../assets/orbs/inactive/rapidfire-inactive.png',
+  slow:   '../assets/orbs/inactive/slow-inactive.png',
+  freeze: '../assets/orbs/inactive/freeze-inactive.png'
+};
+
+
 
 export const mazeLayout = [
     [
@@ -241,7 +284,7 @@ export const mazeLayout = [
 
 export const HEIGHT = 900;
 export const WIDTH = 1400;
-export const HEALTHBARHEIGHT = 75;
+export const HEALTHBARHEIGHT = 2;
 export const TILEW = 36;
 export const TILEH = 40;
 export const OFFSETY = HEALTHBARHEIGHT + 70;

@@ -1,17 +1,21 @@
+//helper.js
 import { tankCharacters, orbTypes, HEIGHT, WIDTH, HEALTHBARHEIGHT } from "./interface.js";
 
-export function calculateDamage(b, p) {
-    let maxDamage = b._damage || 10; 
-    let minDamage = maxDamage * 0.1; 
-    let lifeFrames = b._life || 120; 
-    let maxTime = lifeFrames * (1000 / 60);
-    
-    if (typeof b._createdAt !== "number") return minDamage;
-    let timeElapsed = p.millis() - b._createdAt;
-    let damage = minDamage + ((maxDamage - minDamage) * Math.min(timeElapsed, maxTime)) / maxTime;
-    
-    return Math.round(Math.min(damage, maxDamage));
+export function calculateDamage(b, p, armorReduction = 0) {
+    let maxDamage = b._damage || 10;
+    let minDamage = maxDamage * 0.1;
 
+    let lifeFrames = b.life || b._life || 120;
+    let maxTime = lifeFrames * (1000 / 60);
+
+    if (typeof b._createdAt !== "number") return Math.round(minDamage * (1 - armorReduction));
+
+    let timeElapsed = p.millis() - b._createdAt;
+    let rawDamage = minDamage + ((maxDamage - minDamage) * Math.min(timeElapsed, maxTime)) / maxTime;
+    let clampedDamage = Math.min(rawDamage, maxDamage);
+    let finalDamage = clampedDamage * (1 - Math.max(0, Math.min(1, armorReduction)));
+
+    return Math.round(finalDamage);
 }
 
 export function spawnRandomOrb(hallwayPositions, orbTypes, orbs, p, Orb) {
@@ -31,7 +35,7 @@ export function validHallwayPosition(mazeLayout, tileW, tileH, offsetY) {
             if (c === "." || c === " ") {
                 let x = col * tileW + tileW / 2;
                 let y = row * tileH + tileH / 2 + offsetY;
-                
+
                 if (x >= 20 && x <= WIDTH - 20 && y >= offsetY + 20 && y <= HEIGHT - 20) {
                     hallwayPositions.push({ x, y });
                 }
@@ -42,45 +46,57 @@ export function validHallwayPosition(mazeLayout, tileW, tileH, offsetY) {
     return hallwayPositions;
 }
 
-
 export function wallsColliderSetup(p, hWalls, vWalls, borderWalls) {
     hWalls = new p.Group();
     hWalls.w = 83;
     hWalls.h = 12;
     hWalls.tile = "-";
     hWalls.collider = "static";
-    hWalls.color = "black";
-    
+    // Darker single-color neon walls (teal)
+    hWalls.color = "#163436";
+
     vWalls = new p.Group();
     vWalls.w = 12;
     vWalls.h = 87;
     vWalls.tile = "/";
     vWalls.collider = "static";
-    vWalls.color = "black";
+    vWalls.color = "#163436";
 
     borderWalls = new p.Group();
     borderWalls.collider = "static";
-    borderWalls.color = "black";
+    borderWalls.color = "#258a8f";
 
     new borderWalls.Sprite(WIDTH / 2, HEALTHBARHEIGHT, WIDTH, 5);
     new borderWalls.Sprite(WIDTH / 2, HEIGHT, WIDTH, 10);
     new borderWalls.Sprite(0, HEIGHT / 2, 10, HEIGHT);
     new borderWalls.Sprite(WIDTH, HEIGHT / 2, 10, HEIGHT);
-    
+
     return { hWalls, vWalls, borderWalls };
 }
 
 export function preloadImages(p) {
     for (let i = 0; i < tankCharacters.length; i++) {
-        const imagePath = typeof tankCharacters[i].image === 'string' 
-            ? tankCharacters[i].image 
-            : tankCharacters[i].imagePath;
-        tankCharacters[i].image = p.loadImage(imagePath);
+        const tank = tankCharacters[i];
+
+        const imagePath = typeof tank.image === 'string'
+            ? tank.image
+            : tank.imagePath;
+        tank.image = p.loadImage(imagePath);
+
+        // Optional shooting / destroyed sprite sheets for tanks that
+        // provide them (currently Tank Alpha only).
+        if (typeof tank.shootSheet === 'string') {
+            tank.shootSheet = p.loadImage(tank.shootSheet);
+        }
+
+        if (typeof tank.destroySheet === 'string') {
+            tank.destroySheet = p.loadImage(tank.destroySheet);
+        }
     }
 
     for (let i = 0; i < orbTypes.length; i++) {
-        const imagePath = typeof orbTypes[i].image === 'string' 
-            ? orbTypes[i].image 
+        const imagePath = typeof orbTypes[i].image === 'string'
+            ? orbTypes[i].image
             : orbTypes[i].imagePath;
         orbTypes[i].image = p.loadImage(imagePath);
     }

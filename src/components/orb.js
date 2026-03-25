@@ -1,3 +1,6 @@
+// src/components/orb.js
+console.log("Loaded Orb class from src/components/orb.js");
+
 export class Orb {
   constructor(p, x, y, orbData) {
     this.p = p;
@@ -25,26 +28,13 @@ export class Orb {
 
   setOrbColor() {
     switch (this.type) {
-      case "speed":
-        this.sprite.color = "pink";
-        break;
-      case "damage":
-        this.sprite.color = "red";
-        break;
-      case "health":
-        this.sprite.color = "green";
-        break;
-      case "rapid":
-        this.sprite.color = "yellow";
-        break;
-      case "slow":
-        this.sprite.color = "purple";
-        break;
-      case "freeze":
-        this.sprite.color = "cyan";
-        break;
-      default:
-        this.sprite.color = "white";
+      case "speed":   this.sprite.color = "pink";   break;
+      case "damage":  this.sprite.color = "red";    break;
+      case "health":  this.sprite.color = "green";  break;
+      case "rapid":   this.sprite.color = "yellow"; break;
+      case "slow":    this.sprite.color = "purple"; break;
+      case "freeze":  this.sprite.color = "cyan";   break;
+      default:        this.sprite.color = "white";  break;
     }
   }
 
@@ -71,27 +61,47 @@ export class Orb {
     const duration = 5000;
     console.log(`Applying effect: ${this.type} to player`);
 
+    // Play SFX if main.js registered the helper
+    // @ts-ignore
+    if (window.__mazyPlayOrbSfx) {
+      // @ts-ignore
+      window.__mazyPlayOrbSfx(this.type);
+    }
+    if (!player.orbEffectEndTimes) {
+      player.orbEffectEndTimes = {};
+    }
+
+    const now = performance.now();
+
     switch (this.type) {
       case "speed":
         player.applySpeedBoost(1.1, duration);
+        player.orbEffectEndTimes["speed"] = now + duration;
         break;
       case "damage":
         player.applyDamageBoost(1.5, duration);
+        player.orbEffectEndTimes["damage"] = now + duration;
         break;
       case "health":
         player.heal(30);
+        // Health orb is instant — show a brief 1-second flash on the HUD icon
+        player.orbEffectEndTimes["health"] = now + 1000;
         break;
       case "rapid":
         player.applyRapidFire(0.5, duration);
+        player.orbEffectEndTimes["rapid"] = now + duration;
         break;
       case "slow":
         player.applySpeedBoost(0.5, duration);
+        player.orbEffectEndTimes["slow"] = now + duration;
         break;
       case "freeze":
         player.applyFreeze(2000);
+        player.orbEffectEndTimes["freeze"] = now + 2000;
         break;
       case "weak":
         player.applyDamageBoost(0.5, duration);
+        player.orbEffectEndTimes["weak"] = now + duration;
         break;
     }
   }
