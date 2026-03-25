@@ -272,11 +272,9 @@ const sketch = (p) => {
     // Core combat SFX
     if (fireSfxNormal && fireSfxNormal.setVolume)
       fireSfxNormal.setVolume(factor);
-    if (fireSfxLaser && fireSfxLaser.setVolume)
-      fireSfxLaser.setVolume(factor);
+    if (fireSfxLaser && fireSfxLaser.setVolume) fireSfxLaser.setVolume(factor);
     if (hitSfx && hitSfx.setVolume) hitSfx.setVolume(factor);
-    if (destroyedSfx && destroyedSfx.setVolume)
-      destroyedSfx.setVolume(factor);
+    if (destroyedSfx && destroyedSfx.setVolume) destroyedSfx.setVolume(factor);
 
     // UI button SFX
     if (uiClickSfx && uiClickSfx.setVolume) uiClickSfx.setVolume(factor);
@@ -287,8 +285,7 @@ const sketch = (p) => {
       gameOverAnnounce.setVolume(factor);
     if (gameOverMusic && gameOverMusic.setVolume)
       gameOverMusic.setVolume(factor);
-    if (countdownSfx && countdownSfx.setVolume)
-      countdownSfx.setVolume(factor);
+    if (countdownSfx && countdownSfx.setVolume) countdownSfx.setVolume(factor);
   }
 
   // Game over audio helpers
@@ -370,10 +367,10 @@ const sketch = (p) => {
   // @ts-ignore
   window.__mazyApplyMusicVolume = applyMusicVolumeFromSettings;
 
-   // Allow DOM (arena options modal) to reapply SFX volume
-   // when the user changes the SFX slider.
-   // @ts-ignore
-   window.__mazyApplySfxVolume = applySfxVolumeFromSettings;
+  // Allow DOM (arena options modal) to reapply SFX volume
+  // when the user changes the SFX slider.
+  // @ts-ignore
+  window.__mazyApplySfxVolume = applySfxVolumeFromSettings;
 
   // Expose combat SFX helpers globally so tank.js can call them
   // @ts-ignore
@@ -507,8 +504,7 @@ const sketch = (p) => {
     gameOverAnnounce = p.loadSound(
       "/assets/audio/bgm/game-over-announcement.wav",
       (snd) => snd.setVolume(getSfxVolumeFactor()),
-      (err) =>
-        console.error("Failed to load game-over-announcement.wav", err),
+      (err) => console.error("Failed to load game-over-announcement.wav", err),
     );
 
     gameOverMusic = p.loadSound(
@@ -1093,6 +1089,9 @@ const sketch = (p) => {
 
     // If paused: freeze everything, including indicators
     if (gamePaused) {
+      if (p.kb.presses("escape")) {
+        togglePause(false);
+      }
       return;
     }
 
@@ -1230,7 +1229,10 @@ const sketch = (p) => {
           player.tickAnimationOnly();
         }
       }
-      if (gameState.bot && typeof gameState.bot.tickAnimationOnly === "function") {
+      if (
+        gameState.bot &&
+        typeof gameState.bot.tickAnimationOnly === "function"
+      ) {
         gameState.bot.tickAnimationOnly();
       }
 

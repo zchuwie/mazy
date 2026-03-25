@@ -168,7 +168,7 @@
           </div>
 
           <!-- Controls Section - BIG ARCADE BUTTONS -->
-          <div class="controls-section">
+          <div id="p2ControlsSection" class="controls-section">
             <!-- Move Label -->
             <div class="control-label-text">MOVEMENT</div>
             <!-- Move Controls -->
@@ -493,6 +493,57 @@
         const pauseMainMenuBtn = document.getElementById("pauseMainMenuBtn");
         const pauseOptionsBtn = document.getElementById("pauseOptionsBtn");
         const pauseTutorialBtn = document.getElementById("pauseTutorialBtn");
+        const p2ControlsSection = document.getElementById("p2ControlsSection");
+        const p2Name = document.getElementById("p2Name");
+
+        const p2ControlsDefaultMarkup = p2ControlsSection
+          ? p2ControlsSection.innerHTML
+          : "";
+
+        function getGameConfig() {
+          try {
+            const raw = sessionStorage.getItem("gameConfig");
+            return raw ? JSON.parse(raw) : null;
+          } catch {
+            return null;
+          }
+        }
+
+        function syncRightControlsPanel() {
+          if (!p2ControlsSection) return;
+
+          const config = getGameConfig();
+          const modeIsBot = config?.mode === "bot";
+          const labelIsBot =
+            (p2Name?.textContent || "").trim().toUpperCase() === "BOT";
+
+          if (!modeIsBot && !labelIsBot) {
+            p2ControlsSection.innerHTML = p2ControlsDefaultMarkup;
+            return;
+          }
+
+          const difficulty = String(config?.difficulty || "hard").toUpperCase();
+          p2ControlsSection.innerHTML = `
+            <div class="control-label-text">BOT</div>
+            <div class="control-item"><span class="control-key">Try Your Best!</span></div>
+            <div class="control-item">AUTO MOVEMENT + SHOOT</div>
+            <div class="control-item">COUNTER WITH ORBS AND DODGE ITS BULLETS!</div>
+          `;
+        }
+
+        syncRightControlsPanel();
+
+        if (p2Name) {
+          const p2NameObserver = new MutationObserver(() => {
+            syncRightControlsPanel();
+          });
+
+          p2NameObserver.observe(p2Name, {
+            childList: true,
+            subtree: true,
+            characterData: true,
+          });
+        }
 
         // Tutorial state (arena)
         let tutorialStepIndex = 0;
