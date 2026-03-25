@@ -75,7 +75,7 @@ export class Orb {
 
     switch (this.type) {
       case "speed":
-        player.applySpeedBoost(1.1, duration);
+        player.applySpeedBoost(1.5, duration);
         player.orbEffectEndTimes["speed"] = now + duration;
         break;
       case "damage":
